@@ -19,7 +19,8 @@ import {
   FileDown,
   ChevronDown,
   Calculator,
-  RefreshCw
+  RefreshCw,
+  Printer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -295,6 +296,37 @@ export default function QuotationsPage() {
       });
     } finally {
       setDownloadingQuotation(null);
+    }
+  };
+
+  // Handle print PDF (open in new tab and trigger print)
+  const handlePrint = async (quotation: Quotation) => {
+    try {
+      const response = await fetch(`/api/quotations/${quotation.id}/pdf`);
+      if (!response.ok) {
+        throw new Error(`Failed to generate PDF: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+      if (!printWindow) {
+        throw new Error("Popup blocked. Please allow popups for this site.");
+      }
+      // Give the new window a moment to load the PDF, then trigger print
+      setTimeout(() => {
+        try { printWindow.focus(); printWindow.print(); } catch {}
+      }, 500);
+      // Cleanup
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 10000);
+    } catch (error) {
+      console.error("Error printing quotation PDF:", error);
+      toast({
+        title: "Error",
+        description: "Failed to open print dialog. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -642,6 +674,18 @@ export default function QuotationsPage() {
                 ) : (
                   <Download className="h-4 w-4 text-gray-600" />
                 )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrint(quotation);
+                }}
+                title="Print"
+                data-testid={`button-print-${quotation.id}`}
+              >
+                <Printer className="h-4 w-4 text-gray-600" />
               </Button>
               <Button
                 variant="ghost"

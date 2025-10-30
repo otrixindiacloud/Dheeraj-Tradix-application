@@ -537,6 +537,22 @@ export default function SupplierLpoPage() {
     }
   };
 
+  // Print LPO PDF
+  const printLpoPdf = async (lpo: SupplierLpo & { supplierName?: string }) => {
+    try {
+      const response = await fetch(`/api/supplier-lpos/${lpo.id}/pdf`);
+      if (!response.ok) throw new Error('Failed to generate PDF');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const w = window.open(url, '_blank');
+      if (!w) throw new Error('Popup blocked. Please allow popups for this site.');
+      setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 500);
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to open print dialog', variant: 'destructive' });
+    }
+  };
+
 
   return (
     <div className="space-y-6 p-6">
@@ -1113,6 +1129,20 @@ export default function SupplierLpoPage() {
                             data-testid={`button-download-${lpo.id}`}
                           >
                             <Download className="w-4 h-4 text-gray-600" />
+                          </Button>
+                          {/* Print Button */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              printLpoPdf(lpo);
+                            }}
+                            title="Print LPO"
+                            data-testid={`button-print-${lpo.id}`}
+                          >
+                            <Printer className="w-4 h-4 text-gray-600" />
                           </Button>
                           
                           

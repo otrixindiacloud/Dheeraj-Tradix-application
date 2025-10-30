@@ -15,7 +15,7 @@ import {
   Plus, Search, Filter, FileText, Truck, Package, 
   AlertCircle, CheckCircle, Clock, Copy,
   Edit, Trash2, Eye, Download, Upload, FileCheck, ClipboardList,
-  QrCode, MapPin, User, Calendar, RefreshCw, History
+  QrCode, MapPin, User, Calendar, RefreshCw, History, Printer
 } from "lucide-react";
 import DataTable, { Column } from "@/components/tables/data-table";
 import { formatDate, formatCurrency, getStatusColor } from "@/lib/utils";
@@ -160,6 +160,22 @@ export default function DeliveryNote() {
     return null;
   };
 
+  // Auto-open create dialog if redirected from detail page
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem("createDeliveryFromDetail");
+      if (raw) {
+        localStorage.removeItem("createDeliveryFromDetail");
+        const payload = JSON.parse(raw);
+        if (payload && payload.salesOrderId) {
+          setSelectedSalesOrderId(payload.salesOrderId as string);
+          setPrefillAllRemaining(true);
+          setShowCreateDialog(true);
+        }
+      }
+    } catch {}
+  }, []);
+
   // Function to fetch delivery history
   const fetchDeliveryHistory = async (deliveryId: string) => {
     setDeliveryHistoryLoading(true);
@@ -285,6 +301,42 @@ export default function DeliveryNote() {
         title: "Error",
         description: "Failed to download delivery note PDF",
         variant: "destructive",
+      });
+    }
+  };
+
+  // Print PDF in new tab
+  const handlePrintPDF = async (deliveryNote: DeliveryNote) => {
+    try {
+      const response = await fetch(`/api/delivery-notes/${deliveryNote.id}/pdf`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/pdf',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (!printWindow) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+      setTimeout(() => {
+        try { printWindow.focus(); printWindow.print(); } catch {}
+      }, 500);
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 10000);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to open print dialog. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -756,10 +808,9 @@ export default function DeliveryNote() {
       queryClient.invalidateQueries({ queryKey: ["delivery-notes"] });
       setCurrentPage(1);
 
-      // Open details dialog for the (new or reused) delivery and fetch items
+      // Close create dialog and avoid opening details dialog
       setSelectedDeliveryNote(createdDelivery);
       setShowCreateDialog(false);
-      setShowDetailsDialog(true);
       resetForm();
       toast({ title: "Success", description: deliveryType === 'Partial' ? "Partial delivery saved" : "Delivery note created" });
     } catch (e: any) {
@@ -1166,6 +1217,18 @@ export default function DeliveryNote() {
             onClick={() => handleDownloadPDF(item)}
           >
             <Download className="h-4 w-4" />
+          </Button>
+
+          {/* Print PDF */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Print"
+            aria-label="Print"
+            onClick={() => handlePrintPDF(item)}
+          >
+            <Printer className="h-4 w-4" />
           </Button>
 
           {/* Edit */}
@@ -1730,8 +1793,8 @@ export default function DeliveryNote() {
         </DialogContent>
       </Dialog>
 
-      {/* Delivery Details Dialog */}
-      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+      {/* Delivery Details Dialog (disabled) */}
+      <Dialog open={false} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-5xl max-h-[75vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, FileText, Send, DollarSign, Clock, CheckCircle, Download, Edit, Plane, AlertTriangle, FileDown, ChevronDown, Receipt, User, X, Building2, Package } from "lucide-react";
+import { Plus, Search, Filter, FileText, Send, DollarSign, Clock, CheckCircle, Download, Edit, Plane, AlertTriangle, FileDown, ChevronDown, Receipt, User, X, Building2, Package, Printer, Eye } from "lucide-react";
 import DataTable, { Column } from "@/components/tables/data-table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -360,6 +360,27 @@ export default function Invoicing() {
     }
   };
 
+  const printInvoicePDF = async (invoiceId: string, invoiceType: string = 'Standard') => {
+    try {
+      const apiUrl = `/api/invoices/${invoiceId}/pdf?invoiceType=${encodeURIComponent(invoiceType)}`;
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/pdf' },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const w = window.open(url, '_blank');
+      if (!w) throw new Error('Popup blocked. Please allow popups for this site.');
+      setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 500);
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to open print dialog', variant: 'destructive' });
+    }
+  };
+
 
   const exportInvoices = (format: 'csv' | 'excel') => {
     if (!filteredInvoices || filteredInvoices.length === 0) {
@@ -638,6 +659,19 @@ export default function Invoicing() {
       header: "Actions",
       render: (_, invoice: any) => (
         <div className="flex items-center space-x-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLocationForNavigation(`/invoices/${invoice.id}`);
+            }}
+            data-testid={`button-view-${invoice.id}`}
+            title="View Invoice Details"
+            className="text-black hover:text-black hover:bg-gray-50"
+          >
+            <Eye className="h-4 w-4 text-black" />
+          </Button>
           {invoice.status === "Draft" && (
             <Button
               size="sm"
@@ -681,6 +715,19 @@ export default function Invoicing() {
             className="text-black hover:text-black hover:bg-gray-50"
           >
             <Download className="h-4 w-4 text-black" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              printInvoicePDF(invoice.id, invoice.invoiceType);
+            }}
+            data-testid={`button-print-${invoice.id}`}
+            title="Print Invoice"
+            className="text-black hover:text-black hover:bg-gray-50"
+          >
+            <Printer className="h-4 w-4 text-black" />
           </Button>
         </div>
       ),

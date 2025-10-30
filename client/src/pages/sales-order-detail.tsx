@@ -223,7 +223,7 @@ export default function SalesOrderDetail() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow border p-6">
+      <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button
@@ -233,9 +233,12 @@ export default function SalesOrderDetail() {
               <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Sales Orders
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold">{salesOrder.orderNumber}</h1>
-              <p className="text-gray-600">{salesOrder.customer?.name || "Unknown Customer"}</p>
+            <div className="flex items-center gap-3">
+              <FileText className="h-6 w-6 text-blue-600" />
+              <div>
+                <h1 className="text-2xl font-bold">{salesOrder.orderNumber}</h1>
+                <p className="text-gray-600">{salesOrder.customer?.name || "Unknown Customer"}</p>
+              </div>
             </div>
           </div>
             <StatusPill status={salesOrder.status?.toLowerCase() || 'draft'} />
@@ -411,7 +414,13 @@ export default function SalesOrderDetail() {
                           
                           items.forEach((it: any) => {
                             const qty = Number(it.quantity) || 0;
-                            const unitPrice = Number(it.unitPrice) || 0;
+                            // Prefer cost+markup when available (align with line items table)
+                            const costPrice = Number((it as any).costPrice) || 0;
+                            const markupPct = Number((it as any).markup ?? (it as any).markupPercent) || 0;
+                            const computedUnitFromMarkup = costPrice > 0 && markupPct > 0 
+                              ? costPrice * (1 + Math.max(0, markupPct) / 100)
+                              : 0;
+                            const unitPrice = computedUnitFromMarkup > 0 ? computedUnitFromMarkup : (Number(it.unitPrice) || 0);
                             const subtotal = qty * unitPrice;
                             
                             const discountPercent = Number(it.discountPercentage) || 
@@ -427,9 +436,9 @@ export default function SalesOrderDetail() {
                             
                             const afterDiscount = Math.max(0, subtotal - appliedDiscount);
                             
-                            const taxPercent = Number(it.vatPercent) || 
+                            const taxPercent = Number((it as any).vatPercent) || 
                               Number((quotation as any)?.vatPercent) || 0;
-                            const taxAmount = Number(it.vatAmount) || 0;
+                            const taxAmount = Number((it as any).vatAmount) || 0;
                             let appliedTax = 0;
                             if (taxPercent > 0) {
                               appliedTax = (afterDiscount * taxPercent) / 100;
@@ -467,8 +476,13 @@ export default function SalesOrderDetail() {
                         
                         items.forEach((it: any) => {
                           const qty = Number(it.quantity) || 0;
-                          const unitPrice = Number(it.unitPrice) || 0;
-                          // Subtotal = Unit Price × Quantity
+                          // Subtotal = Unit Price × Quantity, but prefer cost+markup when available
+                          const costPrice = Number((it as any).costPrice) || 0;
+                          const markupPct = Number((it as any).markup ?? (it as any).markupPercent) || 0;
+                          const computedUnitFromMarkup = costPrice > 0 && markupPct > 0
+                            ? costPrice * (1 + Math.max(0, markupPct) / 100)
+                            : 0;
+                          const unitPrice = computedUnitFromMarkup > 0 ? computedUnitFromMarkup : (Number(it.unitPrice) || 0);
                           const subtotal = qty * unitPrice;
                           
                           // Get discount - prefer from item, fallback to quotation/sales order header
@@ -489,9 +503,9 @@ export default function SalesOrderDetail() {
                           const afterDiscount = Math.max(0, subtotal - appliedDiscount);
                           
                           // Get VAT - prefer from item, fallback to quotation/sales order header
-                          const taxPercent = Number(it.vatPercent) || 
+                          const taxPercent = Number((it as any).vatPercent) || 
                             Number((quotation as any)?.vatPercent) || 0;
-                          const taxAmount = Number(it.vatAmount) || 0;
+                          const taxAmount = Number((it as any).vatAmount) || 0;
                           let appliedTax = 0;
                           if (taxPercent > 0) {
                             // Prioritize VAT percentage calculation

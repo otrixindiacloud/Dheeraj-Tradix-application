@@ -12,6 +12,7 @@ import {
   Edit, 
   Trash2,
   Download,
+  Plus,
   CheckCircle,
   XCircle,
   Clock,
@@ -33,7 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import StatusPill from "@/components/status/status-pill";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency } from "@/lib/utils";
+// removed formatCurrency as price fields are no longer shown on this page
 
 interface DeliveryNote {
   id: string;
@@ -116,6 +117,7 @@ export default function DeliveryNoteDetailPage() {
   const [aggregateDeliveredQty, setAggregateDeliveredQty] = useState<number | null>(null);
   const [aggregateOrderedQty, setAggregateOrderedQty] = useState<number | null>(null);
   const [remainingBySoItem, setRemainingBySoItem] = useState<Record<string, number>>({});
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
 
   // Fetch delivery note and items on mount or deliveryId change
   React.useEffect(() => {
@@ -419,7 +421,7 @@ export default function DeliveryNoteDetailPage() {
   }
 
   const completion = calculateDeliveryCompletion(items);
-  const totalValue = items.reduce((sum, item) => sum + parseFloat(item.totalPrice || "0"), 0);
+  // price totals removed from UI; no total value calculation needed
 
   return (
     <div className="p-6 space-y-6">
@@ -444,6 +446,28 @@ export default function DeliveryNoteDetailPage() {
         </div>
         
         <div className="flex space-x-2">
+          <Button 
+            onClick={() => {
+              if (!deliveryNote?.salesOrderId) {
+                toast({ title: "Error", description: "Sales order not found for this delivery note.", variant: "destructive" });
+                return;
+              }
+              if (isCreatingNew) return;
+              setIsCreatingNew(true);
+              try {
+                localStorage.setItem("createDeliveryFromDetail", JSON.stringify({ salesOrderId: deliveryNote.salesOrderId }));
+              } catch {}
+              setTimeout(() => navigate("/delivery-note"), 50);
+            }}
+            disabled={isCreatingNew}
+          >
+            {isCreatingNew ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4 mr-2" />
+            )}
+            {isCreatingNew ? "Opening..." : "Create Delivery"}
+          </Button>
           <Button variant="outline" onClick={downloadPDF}>
             <Download className="h-4 w-4 mr-2" />
             Download PDF
@@ -495,19 +519,7 @@ export default function DeliveryNoteDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <DollarSign className="h-4 w-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-black">Total Value</p>
-                <p className="font-semibold">{formatCurrency(totalValue)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Total Value card removed per requirements */}
 
         <Card>
           <CardContent className="p-4">
@@ -672,8 +684,7 @@ export default function DeliveryNoteDetailPage() {
                       <th className="border p-2 text-center text-sm font-medium">Picked</th>
                       <th className="border p-2 text-center text-sm font-medium">Delivered</th>
                       <th className="border p-2 text-center text-sm font-medium">Remaining</th>
-                      <th className="border p-2 text-right text-sm font-medium">Unit Price</th>
-                      <th className="border p-2 text-right text-sm font-medium">Total</th>
+                      {/* Unit Price and Total columns removed */}
                     </tr>
                   </thead>
                   <tbody>
@@ -699,20 +710,11 @@ export default function DeliveryNoteDetailPage() {
                               {remainingQty}
                             </span>
                           </td>
-                          <td className="border p-2 text-sm text-right">{formatCurrency(parseFloat(item.unitPrice || "0"))}</td>
-                          <td className="border p-2 text-sm text-right font-medium">{formatCurrency(parseFloat(item.totalPrice || "0"))}</td>
                         </tr>
                       );
                     })}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-50 font-semibold">
-                      <td colSpan={6} className="border p-2 text-right">Total:</td>
-                      <td className="border p-2 text-right" colSpan={2}>
-                        {formatCurrency(totalValue)}
-                      </td>
-                    </tr>
-                  </tfoot>
+                  {/* Footer total removed */}
                 </table>
               </div>
 
@@ -793,13 +795,13 @@ export default function DeliveryNoteDetailPage() {
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Partial Deliveries</div>
                 <div className="text-2xl font-bold text-yellow-600">
-                  {relatedDeliveries.filter(d => d.status === 'Partial').length}
+                  {relatedDeliveries.filter(d => (d as any).deliveryType === 'Partial').length}
                 </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Complete Deliveries</div>
                 <div className="text-2xl font-bold text-green-600">
-                  {relatedDeliveries.filter(d => d.status === 'Complete').length}
+                  {relatedDeliveries.filter(d => (d as any).deliveryType && (d as any).deliveryType.toLowerCase() !== 'partial').length}
                 </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">

@@ -22,7 +22,8 @@ import {
   CreditCard,
   Calculator,
   Edit3,
-  MoreHorizontal
+  MoreHorizontal,
+  Printer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -400,6 +401,23 @@ export default function PurchaseInvoicesPage() {
     }
   };
 
+  // Print PDF handler
+  const handlePrintPDF = async (invoice: PurchaseInvoice) => {
+    try {
+      const response = await fetch(`/api/purchase-invoices/${invoice.id}/pdf?mode=enhanced`);
+      if (!response.ok) throw new Error('Failed to generate PDF');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const w = window.open(url, '_blank');
+      if (!w) throw new Error('Popup blocked. Please allow popups for this site.');
+      setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 500);
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (error) {
+      console.error('Error printing PDF:', error);
+      toast({ title: 'Print Failed', description: 'Failed to open print dialog.', variant: 'destructive' });
+    }
+  };
+
   // Handle payment (disabled in derived view)
   const handlePayment = (invoice: PurchaseInvoice) => {
     toast({
@@ -687,6 +705,18 @@ export default function PurchaseInvoicesPage() {
             title="Download PDF"
           >
             <Download className="h-4 w-4 text-blue-600" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePrintPDF(invoice);
+            }}
+            data-testid={`button-print-${invoice.id}`}
+            title="Print PDF"
+          >
+            <Printer className="h-4 w-4 text-blue-600" />
           </Button>
           
           <Button

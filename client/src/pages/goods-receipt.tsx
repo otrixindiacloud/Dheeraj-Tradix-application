@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Eye, Trash, Package, Scan, AlertTriangle, Check, Clock, CheckCircle, Truck, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Trash, Package, Scan, AlertTriangle, Check, Clock, CheckCircle, Truck, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { Link } from "wouter";
 import DataTable, { Column } from "@/components/tables/data-table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatDate, formatCurrency, getStatusColor } from "@/lib/utils";
@@ -656,7 +657,6 @@ export default function GoodsReceipt() {
   });
   // Dialog state for view/delete/status change actions on Goods Receipt Header
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   
@@ -675,19 +675,7 @@ export default function GoodsReceipt() {
     queryKey: ["/api/goods-receipt-headers"],
   });
 
-  // Query to fetch goods receipt items for the selected receipt
-  const { data: goodsReceiptItems, isLoading: itemsLoading } = useQuery({
-    queryKey: ["/api/goods-receipt-headers", selectedReceipt?.id, "items"],
-    queryFn: async () => {
-      if (!selectedReceipt?.id) return [];
-      const response = await fetch(`/api/goods-receipt-headers/${selectedReceipt.id}/items`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch goods receipt items');
-      }
-      return response.json();
-    },
-    enabled: !!selectedReceipt?.id && viewDialogOpen,
-  });
+  // Removed view dialog and associated items query
 
   // Mutation for deleting a goods receipt header
   const deleteGoodsReceipt = useMutation({
@@ -1371,9 +1359,17 @@ export default function GoodsReceipt() {
                 header: "Actions",
                 render: (_: any, row: any) => (
                   <div className="flex items-center gap-2">
-                    <Button size="icon" variant="ghost" onClick={() => { setSelectedReceipt(row); setViewDialogOpen(true); }} title="View">
-                      <Eye className="h-4 w-4 text-blue-600" />
-                    </Button>
+                    <Link href={`/receipts/${row.id}`}>
+                      <a title="Open Detail Page">
+                        <Button 
+                          size="icon" 
+                          variant="ghost"
+                          data-testid={`button-open-detail-${row.id}`}
+                        >
+                          <Eye className="h-4 w-4 text-blue-600" />
+                        </Button>
+                      </a>
+                    </Link>
                     <Button size="icon" variant="ghost" onClick={() => { setSelectedReceipt(row); setStatusChangeDialogOpen(true); }} title="Change Status">
                       <Clock className="h-4 w-4 text-purple-600" />
                     </Button>
@@ -1419,324 +1415,7 @@ export default function GoodsReceipt() {
     })()}
         </CardContent>
       </Card>
-      {/* Dialogs for view/edit/delete actions */}
-      <Dialog open={viewDialogOpen} onOpenChange={(open) => { setViewDialogOpen(open); if (!open) setSelectedReceipt(null); }}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader className="border-b pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-                  <Eye className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <DialogTitle className="text-2xl font-bold text-gray-900">Goods Receipt Details</DialogTitle>
-                  <p className="text-sm text-gray-500 mt-1">Complete receipt information and status</p>
-                </div>
-              </div>
-              {selectedReceipt && (
-                <div>
-                  {(() => {
-                    let colorClasses = "bg-gray-100 text-gray-700 border-gray-300";
-                    const v = selectedReceipt.status;
-                    if (v === "Draft") colorClasses = "bg-yellow-100 text-yellow-700 border-yellow-300";
-                    else if (v === "Pending") colorClasses = "bg-gray-100 text-gray-700 border-gray-300";
-                    else if (v === "Partial") colorClasses = "bg-blue-100 text-blue-700 border-blue-300";
-                    else if (v === "Complete" || v === "Completed") colorClasses = "bg-green-100 text-green-700 border-green-300";
-                    else if (v === "Approved") colorClasses = "bg-emerald-100 text-emerald-700 border-emerald-300";
-                    else if (v === "Discrepancy") colorClasses = "bg-red-100 text-red-700 border-red-300";
-                    return <Badge variant="outline" className={`${colorClasses} text-sm px-3 py-1.5 font-semibold border`}>{v}</Badge>;
-                  })()}
-                </div>
-              )}
-            </div>
-          </DialogHeader>
-          {selectedReceipt && (
-            <div className="space-y-6 pt-6">
-              {/* Receipt Information Section */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-6 border border-blue-200 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <Package className="h-5 w-5 text-blue-600" />
-                  <h3 className="text-lg font-bold text-gray-900">Receipt Information</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Receipt Number</p>
-                    <p className="text-lg font-bold text-gray-900 font-mono">{selectedReceipt.receiptNumber || selectedReceipt.id}</p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">LPO Number</p>
-                    <p className="text-lg font-bold text-blue-600 font-mono">{selectedReceipt.lpoNumber || selectedReceipt.supplierLpoId || "N/A"}</p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Supplier Name</p>
-                    <p className="text-lg font-semibold text-gray-900">{selectedReceipt.supplierName || "Unknown Supplier"}</p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">LPO Value</p>
-                    <p className="text-lg font-bold text-green-600">
-                      {(() => {
-                        const lpoValue = selectedReceipt.lpoValue || selectedReceipt.lpoTotalAmount;
-                        const lpoCurrency = selectedReceipt.lpoCurrency || selectedReceipt.lpoCurrencyFromLpo || "BHD";
-                        return lpoValue ? `${formatCurrency(parseFloat(lpoValue))} ${lpoCurrency}` : "-";
-                      })()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Storage & Logistics Section */}
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-6 border border-purple-200 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <Truck className="h-5 w-5 text-purple-600" />
-                  <h3 className="text-lg font-bold text-gray-900">Storage & Logistics</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Storage Location</p>
-                    <p className="text-base font-semibold text-gray-900">{selectedReceipt.storageLocation || "-"}</p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Expected Delivery</p>
-                    <p className="text-base font-semibold text-gray-900">
-                      {selectedReceipt.expectedDeliveryDate ? formatDate(selectedReceipt.expectedDeliveryDate) : "-"}
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Actual Delivery</p>
-                    <p className="text-base font-semibold text-gray-900">
-                      {selectedReceipt.actualDeliveryDate ? formatDate(selectedReceipt.actualDeliveryDate) : "-"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Timestamps & Tracking Section */}
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 border border-gray-200 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <Clock className="h-5 w-5 text-gray-600" />
-                  <h3 className="text-lg font-bold text-gray-900">Timestamps & Tracking</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Created At</p>
-                    <p className="text-base font-semibold text-gray-900">{selectedReceipt.createdAt ? formatDate(selectedReceipt.createdAt) : "-"}</p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Updated At</p>
-                    <p className="text-base font-semibold text-gray-900">{selectedReceipt.updatedAt ? formatDate(selectedReceipt.updatedAt) : "-"}</p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Received By</p>
-                    <p className="text-base font-semibold text-gray-900">{selectedReceipt.receivedBy || "-"}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes Section */}
-              {selectedReceipt.notes && (
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-6 border border-amber-200 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-600" />
-                    <h3 className="text-lg font-bold text-gray-900">Notes & Comments</h3>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-amber-100">
-                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedReceipt.notes}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Items Section - Fetch from API */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-6 border border-green-200 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-5 w-5 text-green-600" />
-                    <h3 className="text-lg font-bold text-gray-900">Received Items</h3>
-                  </div>
-                  {itemsLoading ? (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm text-gray-500">Loading items...</span>
-                    </div>
-                  ) : goodsReceiptItems && Array.isArray(goodsReceiptItems) && goodsReceiptItems.length > 0 ? (
-                    <Badge className="bg-green-100 text-green-700 border-green-300 text-sm px-3 py-1">
-                      {goodsReceiptItems.length} {goodsReceiptItems.length === 1 ? 'Item' : 'Items'}
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-gray-100 text-gray-700 border-gray-300 text-sm px-3 py-1">
-                      No Items
-                    </Badge>
-                  )}
-                </div>
-                {itemsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="h-8 w-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : goodsReceiptItems && Array.isArray(goodsReceiptItems) && goodsReceiptItems.length > 0 ? (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {goodsReceiptItems.map((item: any, idx: number) => (
-                      <div key={item.id || idx} className="bg-white rounded-lg p-4 shadow-sm border border-green-100 hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Package className="h-5 w-5 text-green-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <div className="flex-1">
-                                <p className="font-semibold text-gray-900 text-base">
-                                  {item.itemDescription || item.description || item.itemId || `Item ${idx + 1}`}
-                                </p>
-                                {item.barcode && (
-                                  <p className="text-xs font-mono text-gray-500 mt-1">
-                                    Barcode: {item.barcode}
-                                  </p>
-                                )}
-                                {item.supplierCode && (
-                                  <p className="text-xs font-mono text-gray-500 mt-0.5">
-                                    Supplier Code: {item.supplierCode}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-medium text-gray-500">Qty Received</p>
-                                <p className="text-xl font-bold text-green-600">{item.quantityReceived || item.quantity || 0}</p>
-                                {item.quantityExpected && item.quantityExpected !== item.quantityReceived && (
-                                  <p className="text-xs text-orange-600 mt-1">
-                                    Expected: {item.quantityExpected}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* Item Details Grid */}
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100">
-                              {item.unitCost && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Unit Cost</p>
-                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(parseFloat(item.unitCost))}</p>
-                                </div>
-                              )}
-                              {item.totalCost && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Total Cost</p>
-                                  <p className="text-sm font-semibold text-emerald-600">{formatCurrency(parseFloat(item.totalCost))}</p>
-                                </div>
-                              )}
-                              {item.storageLocation && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Storage</p>
-                                  <p className="text-sm font-semibold text-gray-900">{item.storageLocation}</p>
-                                </div>
-                              )}
-                              {item.condition && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Condition</p>
-                                  <Badge variant="outline" className={`text-xs ${
-                                    item.condition === 'Good' ? 'bg-green-50 text-green-700 border-green-200' :
-                                    item.condition === 'Damaged' ? 'bg-red-50 text-red-700 border-red-200' :
-                                    'bg-gray-50 text-gray-700 border-gray-200'
-                                  }`}>
-                                    {item.condition}
-                                  </Badge>
-                                </div>
-                              )}
-                              {item.batchNumber && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Batch #</p>
-                                  <p className="text-sm font-semibold text-gray-900 font-mono">{item.batchNumber}</p>
-                                </div>
-                              )}
-                              {item.expiryDate && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Expiry Date</p>
-                                  <p className="text-sm font-semibold text-gray-900">{formatDate(item.expiryDate)}</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Discrepancy Information */}
-                            {item.discrepancyReason && (
-                              <div className="mt-3 pt-3 border-t border-orange-100 bg-orange-50 -mx-4 -mb-4 px-4 py-2 rounded-b-lg">
-                                <div className="flex items-start gap-2">
-                                  <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                                  <div className="flex-1">
-                                    <p className="text-xs font-medium text-orange-700">Discrepancy Noted</p>
-                                    <p className="text-xs text-orange-600 mt-0.5">{item.discrepancyReason}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Item Notes */}
-                            {item.notes && !item.discrepancyReason && (
-                              <div className="mt-3 pt-3 border-t border-blue-100">
-                                <p className="text-xs font-medium text-gray-700">Notes:</p>
-                                <p className="text-xs text-gray-600 mt-1">{item.notes}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Package className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-sm">No items found for this goods receipt</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Summary Statistics */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 shadow-lg text-white">
-                  <p className="text-xs font-medium opacity-90 uppercase tracking-wide mb-1">Total Items</p>
-                  <p className="text-3xl font-bold">{goodsReceiptItems?.length || selectedReceipt.totalItems || 0}</p>
-                </div>
-                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 shadow-lg text-white">
-                  <p className="text-xs font-medium opacity-90 uppercase tracking-wide mb-1">Qty Expected</p>
-                  <p className="text-3xl font-bold">
-                    {goodsReceiptItems?.reduce((sum: number, item: any) => sum + (item.quantityExpected || 0), 0) || selectedReceipt.totalQuantityExpected || 0}
-                  </p>
-                </div>
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 shadow-lg text-white">
-                  <p className="text-xs font-medium opacity-90 uppercase tracking-wide mb-1">Qty Received</p>
-                  <p className="text-3xl font-bold">
-                    {goodsReceiptItems?.reduce((sum: number, item: any) => sum + (item.quantityReceived || 0), 0) || selectedReceipt.totalQuantityReceived || 0}
-                  </p>
-                </div>
-                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 shadow-lg text-white">
-                  <p className="text-xs font-medium opacity-90 uppercase tracking-wide mb-1">Discrepancy</p>
-                  <p className="text-3xl font-bold">
-                    {goodsReceiptItems?.some((item: any) => item.discrepancyReason) || selectedReceipt.discrepancyFlag ? 'Yes' : 'No'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => setViewDialogOpen(false)}
-                  className="px-6"
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={() => {
-                    setViewDialogOpen(false);
-                    setSelectedReceipt(selectedReceipt);
-                    setStatusChangeDialogOpen(true);
-                  }}
-                  className="px-6 bg-purple-600 hover:bg-purple-700"
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Change Status
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* View dialog removed */}
       <Dialog open={deleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setSelectedReceipt(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
