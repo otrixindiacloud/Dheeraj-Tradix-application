@@ -26,6 +26,8 @@ import {
   PackageX
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -203,6 +205,8 @@ export default function ReceiptDetail() {
   const [isEditMode, setIsEditMode] = useState(false);
   // Share dialog removed
   const [editedData, setEditedData] = useState<Partial<GoodsReceipt>>({});
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [newStatus, setNewStatus] = useState<string>("");
 
   // Fetch receipt details
   const { data: receiptData, isLoading, error, refetch } = useQuery({
@@ -291,6 +295,22 @@ export default function ReceiptDetail() {
         variant: "destructive",
       });
     },
+  });
+
+  // Update status mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: async (status: string) => {
+      await apiRequest("PATCH", `/api/goods-receipt-headers/${id}/status`, { status });
+    },
+    onSuccess: async (_data, variables) => {
+      toast({ title: "Status updated", description: `Receipt status set to ${variables}` });
+      setShowStatusDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['goods-receipt', id] });
+      refetch();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   });
 
   const handleSave = () => {
@@ -429,6 +449,16 @@ export default function ReceiptDetail() {
                     <Button variant="outline" onClick={() => setIsEditMode(true)}>
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setNewStatus(receiptData.status);
+                        setShowStatusDialog(true);
+                      }}
+                    >
+                      <ClipboardCheck className="h-4 w-4 mr-2" />
+                      Change Status
                     </Button>
                     {receiptData.status !== "Draft" && (
                       <Button
@@ -684,6 +714,40 @@ export default function ReceiptDetail() {
       </div>
 
       {/* Share dialog removed */}
+      {/* Change Status Dialog */}
+      <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Receipt Status</DialogTitle>
+            <DialogDescription>
+              Select a new status for this goods receipt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Draft">Draft</SelectItem>
+                  <SelectItem value="Partially Received">Partially Received</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Approved">Approved</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowStatusDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => updateStatusMutation.mutate(newStatus)} disabled={updateStatusMutation.isPending || !newStatus}>
+              {updateStatusMutation.isPending ? "Updating..." : "Apply"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

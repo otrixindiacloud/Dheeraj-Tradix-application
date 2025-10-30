@@ -1267,7 +1267,7 @@ export default function ShipmentTrackingPage() {
             }}
             data-testid={`button-edit-${shipment.id}`}
           >
-            <Edit className="h-4 w-4 text-blue-600" />
+            <Edit className="h-4 w-4" />
           </Button>
           {shipment.status !== "Delivered" && (
             <Button

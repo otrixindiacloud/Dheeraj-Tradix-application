@@ -445,6 +445,8 @@ export class InvoiceStorage extends BaseStorage {
   }
 
   async deleteInvoice(id: string) {
+    // Delete dependent invoice items first to satisfy FK constraints, then delete the invoice
+    await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
     await db.delete(invoices).where(eq(invoices.id, id));
   }
 

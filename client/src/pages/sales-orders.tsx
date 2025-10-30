@@ -610,6 +610,31 @@ export default function SalesOrders() {
               )}
             </Button>
           )}
+          {order.status === "Draft" && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmDialog({
+                  open: true,
+                  title: "Delete Sales Order",
+                  description: `Are you sure you want to delete sales order ${order.orderNumber}? This action cannot be undone.`,
+                  onConfirm: () => deleteSalesOrder.mutate(order.id),
+                  variant: "destructive",
+                });
+              }}
+              disabled={deleteSalesOrder.isPending}
+              data-testid={`icon-delete-${order.id}`}
+            >
+              {deleteSalesOrder.isPending ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
+          )}
         </div>
       ),
     },

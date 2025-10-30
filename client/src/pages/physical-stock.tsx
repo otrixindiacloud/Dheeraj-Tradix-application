@@ -253,7 +253,7 @@ export default function PhysicalStockPage() {
             size="sm"
             onClick={() => setLocation(`/physical-stock/${stock.id}`)}
           >
-            <Eye className="h-4 w-4 text-sky-600" />
+            <Eye className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"

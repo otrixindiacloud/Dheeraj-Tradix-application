@@ -246,7 +246,7 @@ export default function Suppliers() {
             }}
             data-testid={`button-view-${supplier.id}`}
           >
-              <Eye className="h-4 w-4" style={{ color: '#10b981' }} />
+              <Eye className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"

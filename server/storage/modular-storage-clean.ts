@@ -1194,6 +1194,10 @@ export class ModularStorage extends BaseStorage {
     return this.inventoryStorage.updateStockMovement(id, movement);
   }
 
+  async deleteStockMovement(id: string) {
+    return this.inventoryStorage.deleteStockMovement(id);
+  }
+
   async getCustomerStats() {
     try {
       const customers = await this.customerStorage.getCustomers(1000, 0);

@@ -1002,4 +1002,14 @@ export class InventoryStorage extends BaseStorage implements IInventoryStorage {
       throw error;
     }
   }
+
+  async deleteStockMovement(id: string): Promise<void> {
+    try {
+      await this.db.delete(stockMovements).where(eq(stockMovements.id, id));
+    } catch (error) {
+      const err = error as any;
+      console.error('Error deleting stock movement:', err?.stack || err);
+      throw err;
+    }
+  }
 }

@@ -474,7 +474,7 @@ export default function Inventory() {
             data-testid={`button-view-${item.id}`}
             title="View Details"
           >
-            <Eye className="h-4 w-4 text-blue-600" />
+            <Eye className="h-4 w-4" />
           </Button>
           {/* Edit Icon */}
           <Button

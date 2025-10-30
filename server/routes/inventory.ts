@@ -353,4 +353,15 @@ export function registerInventoryRoutes(app: Express) {
       res.status(500).json({ message: "Failed to update stock movement", error: err?.message || String(err) });
     }
   });
+
+  app.delete("/api/stock-movements/:id", async (req, res) => {
+    try {
+      await storage.deleteStockMovement(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      const err = error as any;
+      console.error("Error deleting stock movement:", err?.stack || err);
+      res.status(500).json({ message: "Failed to delete stock movement", error: err?.message || String(err) });
+    }
+  });
 }

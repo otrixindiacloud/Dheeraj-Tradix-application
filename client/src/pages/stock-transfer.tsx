@@ -39,6 +39,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import DataTable from "@/components/tables/data-table";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 // Form schemas
 const TRANSFER_STATUSES = [
@@ -124,6 +125,7 @@ export default function StockTransferPage() {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   // Fetch stock transfers (using stock movements with movementType = "Transfer")
   const { data: stockTransfers = [], isLoading } = useQuery({
@@ -521,6 +523,14 @@ export default function StockTransferPage() {
               }}
             >
               <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={(transfer.recordType ?? "Transfer") === "Issue" || !transfer.id}
+              onClick={() => setDeleteTarget(transfer)}
+            >
+              <XCircle className="h-4 w-4 text-red-600" />
             </Button>
           </div>
         );
@@ -1314,6 +1324,40 @@ export default function StockTransferPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete stock transfer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected stock transfer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteTarget(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleteTarget?.id) { setDeleteTarget(null); return; }
+                try {
+                  const resp = await apiRequest("DELETE", `/api/stock-movements/${deleteTarget.id}`);
+                  if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.message || "Failed to delete stock transfer");
+                  }
+                  setDeleteTarget(null);
+                  queryClient.invalidateQueries({ queryKey: ["stock-transfers"] });
+                  toast({ title: "Deleted", description: "Stock transfer deleted" });
+                } catch (e: any) {
+                  toast({ title: "Error", description: e.message || "Failed to delete", variant: "destructive" });
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

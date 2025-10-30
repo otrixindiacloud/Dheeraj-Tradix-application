@@ -289,6 +289,25 @@ export default function InventoryItemDetailPage() {
 								</div>
 							</Card>
 						</div>
+
+						{/* Status Indicator */}
+						<Card className="bg-gradient-to-r from-slate-50 to-slate-100 shadow-md rounded-xl border-slate-200">
+							<div className="p-6">
+								<div className="flex items-center justify-between flex-wrap gap-4">
+									<div>
+										<p className="text-xs text-slate-600 font-medium uppercase tracking-wide mb-1">Current Status</p>
+										<Badge variant={null as any} className={`border font-semibold px-3 py-1 text-xs ${item.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
+											{item.isActive ? <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> : <XCircle className="h-3.5 w-3.5 mr-1" />}
+											{item.isActive ? 'Active' : 'Inactive'}
+										</Badge>
+									</div>
+									<div className="text-right">
+										<p className="text-xs text-slate-600 font-medium uppercase tracking-wide mb-1">Last Updated</p>
+										<p className="text-sm font-semibold text-slate-900">{formatDate(item.updatedAt, 'MMM dd, yyyy HH:mm')}</p>
+									</div>
+								</div>
+							</div>
+						</Card>
 					</div>
 				)}
 			</div>

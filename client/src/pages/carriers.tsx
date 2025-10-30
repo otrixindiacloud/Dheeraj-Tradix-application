@@ -257,7 +257,7 @@ export default function Carriers() {
             }}
             data-testid={`button-view-${carrier.id}`}
           >
-              <Eye className="h-4 w-4" style={{ color: '#10b981' }} />
+              <Eye className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -268,7 +268,7 @@ export default function Carriers() {
             }}
             data-testid={`button-edit-${carrier.id}`}
           >
-              <Edit className="h-4 w-4" style={{ color: '#2563eb' }} />
+              <Edit className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"

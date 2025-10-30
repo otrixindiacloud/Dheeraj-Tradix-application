@@ -483,6 +483,7 @@ export interface IInventoryStorage {
       reason?: string | null;
     }
   ): Promise<StockMovement | null>;
+  deleteStockMovement(id: string): Promise<void>;
   getItemStockHistory(itemId: string, limit?: number): Promise<StockMovement[]>;
 }
 

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Trash, Package, Scan, AlertTriangle, Check, Clock, CheckCircle, Truck, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { Search, Trash, Package, Scan, AlertTriangle, Check, Clock, CheckCircle, Truck, CheckCircle2, XCircle, Eye, Edit } from "lucide-react";
 import { Link } from "wouter";
 import DataTable, { Column } from "@/components/tables/data-table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1366,13 +1366,17 @@ export default function GoodsReceipt() {
                           variant="ghost"
                           data-testid={`button-open-detail-${row.id}`}
                         >
-                          <Eye className="h-4 w-4 text-blue-600" />
+                          <Eye className="h-4 w-4" />
                         </Button>
                       </a>
                     </Link>
-                    <Button size="icon" variant="ghost" onClick={() => { setSelectedReceipt(row); setStatusChangeDialogOpen(true); }} title="Change Status">
-                      <Clock className="h-4 w-4 text-purple-600" />
-                    </Button>
+                    <Link href={`/receipts/${row.id}`}>
+                      <a title="Edit">
+                        <Button size="icon" variant="ghost" data-testid={`button-edit-${row.id}`}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </a>
+                    </Link>
                     <Button size="icon" variant="ghost" onClick={() => { setSelectedReceipt(row); setDeleteDialogOpen(true); }} title="Delete">
                       <Trash className="h-4 w-4 text-red-600" />
                     </Button>
@@ -1522,7 +1526,7 @@ export default function GoodsReceipt() {
 
       {/* Goods Receipt Dialog */}
       <Dialog open={!!selectedLpo} onOpenChange={() => setSelectedLpo(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Process Goods Receipt</DialogTitle>
           </DialogHeader>

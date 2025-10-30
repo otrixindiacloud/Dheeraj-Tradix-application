@@ -1,10 +1,12 @@
 import type { Express } from "express";
 import { storage } from "../storage";
-import { insertSupplierLpoSchema, insertSupplierLpoItemSchema } from "@shared/schema";
+import { insertSupplierLpoSchema, insertSupplierLpoItemSchema, supplierLpos, supplierLpoItems } from "@shared/schema";
 import { z } from "zod";
 import { getAttributingUserId, getOptionalUserId } from '../utils/user';
 import { generateSupplierLpoPdf } from "../pdf/pdf-utils";
 import { SupplierQuoteStorage } from "../storage/supplier-quote-storage-new";
+import { db } from "../db";
+import { eq } from "drizzle-orm";
 import { 
   validateLpoData, 
   validateLpoUpdateData, 
@@ -88,6 +90,39 @@ export function registerSupplierLpoRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching supplier LPOs:", error);
       res.status(500).json({ message: "Failed to fetch supplier LPOs" });
+    }
+  });
+
+  // Delete supplier LPO
+  app.delete("/api/supplier-lpos/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Validate existence first
+      const existing = await storage.getSupplierLpo(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Supplier LPO not found" });
+      }
+
+      // Only allow delete when in Draft
+      if (existing.status && existing.status !== "Draft") {
+        return res.status(400).json({ message: "Only Draft LPOs can be deleted" });
+      }
+
+      // Attempt deletion via storage if available, else perform manual cascading delete
+      try {
+        // Manually delete items first (FKs exist), then header
+        await db.delete(supplierLpoItems).where(eq(supplierLpoItems.supplierLpoId, id));
+        await db.delete(supplierLpos).where(eq(supplierLpos.id, id));
+      } catch (e: any) {
+        // FK constraints from downstream docs (goods receipts, invoices, etc.)
+        return res.status(400).json({ message: e?.message || "Unable to delete LPO due to related records" });
+      }
+
+      return res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting supplier LPO:", error);
+      res.status(500).json({ message: "Failed to delete supplier LPO" });
     }
   });
 

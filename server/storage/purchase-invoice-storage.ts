@@ -381,13 +381,23 @@ export class PurchaseInvoiceStorage {
   async deletePurchaseInvoice(id: string) {
     try {
       console.log('[PurchaseInvoiceStorage.deletePurchaseInvoice][START]', { id });
-      
-      const deleted = await db
-        .delete(purchaseInvoices)
-        .where(eq(purchaseInvoices.id, id))
-        .returning();
+      // Perform explicit cascading delete to be robust even if DB FK doesn't cascade
+      const result = await db.transaction(async (tx) => {
+        // Delete items first
+        await tx
+          .delete(purchaseInvoiceItems)
+          .where(eq(purchaseInvoiceItems.purchaseInvoiceId, id));
 
-      if (!deleted.length) {
+        // Delete invoice header
+        const deleted = await tx
+          .delete(purchaseInvoices)
+          .where(eq(purchaseInvoices.id, id))
+          .returning();
+
+        return deleted;
+      });
+
+      if (!result.length) {
         return false; // Not found
       }
 

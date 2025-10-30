@@ -3,6 +3,8 @@ import {
   enquiryItems, 
   auditLogs, 
   customers,
+  quotations,
+  supplierQuotes,
   type Enquiry, 
   type EnquiryItem,
   type InsertEnquiry, 
@@ -182,6 +184,13 @@ export class EnquiryStorage extends BaseStorage implements IEnquiryStorage {
     
     // First delete all enquiry items
     await db.delete(enquiryItems).where(eq(enquiryItems.enquiryId, id));
+    
+    // Nullify references in dependent tables that optionally reference enquiries
+    // Quotations.enquiry_id is nullable; set to NULL to avoid FK constraint errors
+    await db.update(quotations).set({ enquiryId: null as any }).where(eq(quotations.enquiryId, id));
+    
+    // Supplier quotes may also reference the enquiry; set to NULL
+    await db.update(supplierQuotes).set({ enquiryId: null as any }).where(eq(supplierQuotes.enquiryId, id));
     
     // Then delete the enquiry
     await db.delete(enquiries).where(eq(enquiries.id, id));

@@ -21,9 +21,9 @@ import {
   Building2,
   CreditCard,
   Calculator,
-  Edit3,
   MoreHorizontal,
-  Printer
+  Printer,
+  Edit
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -296,10 +296,15 @@ export default function PurchaseInvoicesPage() {
   // Delete purchase invoice mutation
   const deletePurchaseInvoice = useMutation({
     mutationFn: async (id: string) => {
-      // Mock implementation - replace with actual API call
-      const index = mockPurchaseInvoices.findIndex(inv => inv.id === id);
-      if (index > -1) {
-        mockPurchaseInvoices.splice(index, 1);
+      const response = await fetch(`/api/purchase-invoices/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const text = await response.text();
+        try {
+          const err = JSON.parse(text);
+          throw new Error(err.message || 'Failed to delete purchase invoice');
+        } catch {
+          throw new Error(text || 'Failed to delete purchase invoice');
+        }
       }
     },
     onSuccess: () => {
@@ -355,12 +360,9 @@ export default function PurchaseInvoicesPage() {
     },
   });
 
-  // Handle delete invoice (disabled in derived view)
+  // Handle delete invoice
   const handleDelete = (invoice: PurchaseInvoice) => {
-    toast({
-      title: "Read-only",
-      description: "Deleting purchase invoices isn't available yet.",
-    });
+    setDeletingInvoice(invoice);
   };
 
   // Download PDF handler
@@ -686,12 +688,12 @@ export default function PurchaseInvoicesPage() {
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              handleStatusChange(invoice);
+              navigate(`/purchase-invoices/${invoice.id}`);
             }}
-            data-testid={`button-status-${invoice.id}`}
-            title="Change Status"
+            data-testid={`button-edit-${invoice.id}`}
+            title="Edit"
           >
-            <Edit3 className="h-4 w-4 text-green-600" />
+            <Edit className="h-4 w-4" />
           </Button>
           
           <Button
@@ -704,7 +706,7 @@ export default function PurchaseInvoicesPage() {
             data-testid={`button-download-${invoice.id}`}
             title="Download PDF"
           >
-            <Download className="h-4 w-4 text-blue-600" />
+            <Download className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -716,7 +718,7 @@ export default function PurchaseInvoicesPage() {
             data-testid={`button-print-${invoice.id}`}
             title="Print PDF"
           >
-            <Printer className="h-4 w-4 text-blue-600" />
+            <Printer className="h-4 w-4" />
           </Button>
           
           <Button

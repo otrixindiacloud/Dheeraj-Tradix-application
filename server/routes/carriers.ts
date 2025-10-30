@@ -39,6 +39,11 @@ export function registerCarrierRoutes(app: Express) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid carrier data", errors: error.errors });
       }
+      const pgError = error as { code?: string; detail?: string };
+      // Handle unique constraint violation from Postgres
+      if (pgError?.code === '23505') {
+        return res.status(409).json({ message: "Carrier code already exists" });
+      }
       console.error("Error creating carrier:", error);
       res.status(500).json({ message: "Failed to create carrier" });
     }

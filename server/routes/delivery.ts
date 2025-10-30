@@ -150,6 +150,10 @@ export function registerDeliveryRoutes(app: Express) {
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting delivery:", error);
+      const msg = error instanceof Error ? error.message : '';
+      if (typeof msg === 'string' && msg.startsWith('Cannot delete delivery note')) {
+        return res.status(400).json({ message: msg });
+      }
       res.status(500).json({ message: "Failed to delete delivery" });
     }
   });
@@ -590,6 +594,10 @@ export function registerDeliveryRoutes(app: Express) {
       res.json({ message: "Delivery note deleted successfully" });
     } catch (error) {
       console.error("Error deleting delivery note:", error);
+      const msg = error instanceof Error ? error.message : '';
+      if (typeof msg === 'string' && msg.startsWith('Cannot delete delivery note')) {
+        return res.status(400).json({ message: msg });
+      }
       res.status(500).json({ message: "Failed to delete delivery note" });
     }
   });

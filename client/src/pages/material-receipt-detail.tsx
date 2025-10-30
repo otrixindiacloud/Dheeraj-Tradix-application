@@ -488,7 +488,7 @@ export default function MaterialReceiptDetail() {
           }
         }}
       >
-  <DialogContent className="max-w-3xl max-h-[75vh] overflow-y-auto">
+  <DialogContent className="max-w-screen-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Receipt Header</DialogTitle>
             <DialogDescription>Update the header information for this material receipt.</DialogDescription>
@@ -699,7 +699,7 @@ export default function MaterialReceiptDetail() {
           }
         }}
       >
-  <DialogContent className="max-w-5xl max-h-[75vh] overflow-y-auto">
+  <DialogContent className="max-w-screen-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Receipt Items</DialogTitle>
             <DialogDescription>Update the line items for this material receipt.</DialogDescription>
@@ -1038,7 +1038,7 @@ export default function MaterialReceiptDetail() {
         }
       `}</style>
 
-      <div className="container mx-auto p-4 lg:p-6 max-w-7xl">
+      <div className="container mx-auto p-4 lg:p-6 max-w-screen-2xl">
         <div className="no-print mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button

@@ -79,6 +79,21 @@ export default function SupplierLpoPage() {
     },
   });
 
+  // Delete LPO
+  const deleteLpoMutation = useMutation({
+    mutationFn: async (lpoId: string) => {
+      await apiRequest("DELETE", `/api/supplier-lpos/${lpoId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Deleted", description: "Supplier LPO deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier-lpos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier-lpos", { status: "Confirmed" }] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error?.message || "Failed to delete LPO", variant: "destructive" });
+    }
+  });
+
   const handleEditLpoSave = (updates: Partial<SupplierLpo>) => {
     if (!editLpo) return;
     editLpoMutation.mutate({ lpoId: editLpo.id, updates });
@@ -1167,8 +1182,9 @@ export default function SupplierLpoPage() {
                             className="h-8 w-8 p-0 hover:bg-red-50"
                             onClick={(e) => {
                               e.stopPropagation();
-                              // Add delete functionality here
-                              console.log('Delete LPO:', lpo.id);
+                              if (window.confirm("Delete this LPO? This action cannot be undone.")) {
+                                deleteLpoMutation.mutate(lpo.id);
+                              }
                             }}
                             title="Delete LPO"
                             data-testid={`button-delete-${lpo.id}`}

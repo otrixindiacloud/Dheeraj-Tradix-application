@@ -227,8 +227,10 @@ function InventoryItemsTab() {
     }
   };
 
-  // Get unique categories for filter
+  // Get unique categories for filter and dropdowns
   const categories = Array.from(new Set((inventoryItems as any[]).map((item: any) => item.category).filter(Boolean)));
+  // Get unique units of measure for dropdowns
+  const unitMeasures = Array.from(new Set((inventoryItems as any[]).map((item: any) => item.unitOfMeasure).filter(Boolean)));
 
   return (
     <div className="space-y-6" data-testid="inventory-items-tab">
@@ -304,10 +306,30 @@ function InventoryItemsTab() {
                     name="supplierCode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Supplier Code</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-supplier-code" />
-                        </FormControl>
+                        <FormLabel>Supplier Code *</FormLabel>
+                        <Select
+                          onValueChange={(code) => {
+                            field.onChange(code);
+                            const matched = (suppliers as any[]).find((s: any) => s.supplierCode === code);
+                            if (matched) {
+                              form.setValue("supplierId", matched.id, { shouldValidate: true, shouldDirty: true });
+                            }
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-supplier-code">
+                              <SelectValue placeholder="Select a supplier code" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(suppliers as any[]).map((supplier: any) => (
+                              <SelectItem key={supplier.id} value={supplier.supplierCode}>
+                                {supplier.supplierCode}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -349,23 +371,56 @@ function InventoryItemsTab() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-category" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-category">
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categories.length === 0 && (
+                              <SelectItem value="Uncategorized">Uncategorized</SelectItem>
+                            )}
+                            {categories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="unitOfMeasure"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit of Measure</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="e.g., kg, pcs, m" data-testid="input-unit-measure" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-unit-measure">
+                              <SelectValue placeholder="Select unit of measure" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {unitMeasures.length === 0 && (
+                              <>
+                                <SelectItem value="EA">EA</SelectItem>
+                                <SelectItem value="kg">kg</SelectItem>
+                                <SelectItem value="pcs">pcs</SelectItem>
+                                <SelectItem value="m">m</SelectItem>
+                              </>
+                            )}
+                            {unitMeasures.map((unit) => (
+                              <SelectItem key={unit} value={unit}>
+                                {unit}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -566,6 +621,7 @@ function InventoryItemsTab() {
                     size="sm"
                     variant="outline"
                     onClick={() => navigate(`/inventory-items/${item.id}`)}
+                    type="button"
                     data-testid={`button-view-${item.id}`}
                   >
                     <Eye className="h-4 w-4" />
@@ -574,6 +630,7 @@ function InventoryItemsTab() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleEdit(item)}
+                    type="button"
                     data-testid={`button-edit-${item.id}`}
                   >
                     <Edit className="h-4 w-4" />
@@ -583,6 +640,7 @@ function InventoryItemsTab() {
                     variant="outline"
                     onClick={() => handleDelete(item.id)}
                     className="text-red-600 hover:text-red-700"
+                    type="button"
                     data-testid={`button-delete-${item.id}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -1517,7 +1575,7 @@ function GoodsReceiptsTab() {
 
       {/* New Goods Receipt Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Create New Goods Receipt</DialogTitle>
             <DialogDescription>Enter details for the new goods receipt.</DialogDescription>
@@ -1627,7 +1685,7 @@ function GoodsReceiptsTab() {
 
       {/* View Goods Receipt Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between w-full">
               <span>Goods Receipt Details</span>
@@ -1816,7 +1874,7 @@ function GoodsReceiptsTab() {
 
       {/* Edit Goods Receipt Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Edit Goods Receipt</DialogTitle>
             <DialogDescription>
@@ -2024,6 +2082,14 @@ function GoodsReceiptsTab() {
                           data-testid={`button-view-receipt-${receipt.id}`}
                         >
                           <FileText className="h-4 w-4 mr-1" /> View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditReceipt(receipt)}
+                          data-testid={`button-edit-receipt-${receipt.id}`}
+                        >
+                          <Edit className="h-4 w-4 mr-1" /> Edit
                         </Button>
                         <Button
                           size="sm"

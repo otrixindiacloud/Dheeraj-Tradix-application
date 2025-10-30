@@ -420,7 +420,7 @@ export default function Enquiries() {
             }}
             data-testid={`button-edit-${enquiry.id}`}
           >
-            <Edit className="h-4 w-4 text-blue-600" />
+            <Edit className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"

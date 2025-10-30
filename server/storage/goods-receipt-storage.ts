@@ -686,6 +686,16 @@ export class GoodsReceiptStorage {
     try {
       console.log('[GoodsReceiptStorage.deleteGoodsReceiptHeader][START]', { id });
       
+      // Delete dependent purchase invoices (will cascade delete their items)
+      try {
+        await db
+          .delete(purchaseInvoices)
+          .where(eq(purchaseInvoices.goodsReceiptId, id));
+      } catch (invErr) {
+        console.error('[GoodsReceiptStorage.deleteGoodsReceiptHeader] Failed deleting dependent purchase invoices', invErr);
+        // proceed; if none exist this is a no-op
+      }
+
       // First delete related goods receipt items
       await db
         .delete(goodsReceiptItems)

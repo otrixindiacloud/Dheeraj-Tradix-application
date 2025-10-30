@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, FileText, Send, DollarSign, Clock, CheckCircle, Download, Edit, Plane, AlertTriangle, FileDown, ChevronDown, Receipt, User, X, Building2, Package, Printer, Eye } from "lucide-react";
+import { Plus, Search, Filter, FileText, Send, DollarSign, Clock, CheckCircle, Download, Edit, Plane, AlertTriangle, FileDown, ChevronDown, Receipt, User, X, Building2, Package, Printer, Eye, Trash2 } from "lucide-react";
 import DataTable, { Column } from "@/components/tables/data-table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -14,6 +14,7 @@ import { EmailSendButton } from "@/components/email/EmailSendButton";
 import { formatDate, formatCurrency, formatCurrencyCompact, getStatusColor } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent as ConfirmDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export default function Invoicing() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -194,6 +195,24 @@ export default function Invoicing() {
         variant: "destructive",
       });
     },
+  });
+
+  const deleteInvoice = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/invoices/${id}`);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({} as any));
+        throw new Error(err?.message || "Failed to delete invoice");
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({ title: "Deleted", description: "Invoice deleted successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error?.message || "Failed to delete invoice", variant: "destructive" });
+    }
   });
 
   // Remove alternate mutation, use only main mutation for proforma
@@ -729,6 +748,41 @@ export default function Invoicing() {
           >
             <Printer className="h-4 w-4 text-black" />
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                data-testid={`button-delete-${invoice.id}`}
+                title="Delete Invoice"
+              >
+                <Trash2 className="h-4 w-4 text-red-600" />
+              </Button>
+            </AlertDialogTrigger>
+            <ConfirmDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this invoice?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete invoice {invoice.invoiceNumber}.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteInvoice.mutate(invoice.id);
+                  }}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </ConfirmDialogContent>
+          </AlertDialog>
         </div>
       ),
     },

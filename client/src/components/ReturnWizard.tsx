@@ -229,7 +229,7 @@ export default function ReturnWizard({ open, onOpenChange, goodsReceipts, suppli
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dialog-responsive flex flex-col h-[90vh] max-h-[90vh]">
+      <DialogContent className="dialog-responsive flex flex-col h-[90vh] max-h-[90vh] w-[95vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <RotateCcw className="h-5 w-5" />

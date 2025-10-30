@@ -296,6 +296,41 @@ export class DeliveryStorage extends BaseStorage implements IDeliveryStorage {
 
   async deleteDelivery(id: string): Promise<void> {
     try {
+      // Prevent deletion if any items from this delivery have been invoiced
+      try {
+        const invoiced = await this.getInvoicedItemsForDelivery(id);
+        if (Array.isArray(invoiced) && invoiced.length > 0) {
+          const msg = 'Cannot delete delivery note: one or more items have been invoiced';
+          // Use a specific error message so route can translate to 400
+          throw new Error(msg);
+        }
+      } catch (checkErr) {
+        // If the check itself fails unexpectedly, surface a clear error
+        if (checkErr instanceof Error && checkErr.message.startsWith('Cannot delete delivery note')) {
+          throw checkErr;
+        }
+        // Fall through to deletion; invoiced check is best-effort
+      }
+
+      // Delete dependent picking data first to satisfy FK constraints
+      // 1) Find picking sessions for this delivery
+      const sessions = await db
+        .select()
+        .from(deliveryPickingSessions)
+        .where(eq(deliveryPickingSessions.deliveryId, id));
+
+      if (sessions.length > 0) {
+        const sessionIds = sessions.map((s: any) => s.id);
+        // 2) Delete picked items belonging to those sessions
+        await db
+          .delete(deliveryPickedItems)
+          .where(sql`${deliveryPickedItems.pickingSessionId} = ANY(${sql.array(sessionIds, 'uuid')})`);
+        // 3) Delete the picking sessions themselves
+        await db
+          .delete(deliveryPickingSessions)
+          .where(sql`${deliveryPickingSessions.id} = ANY(${sql.array(sessionIds, 'uuid')})`);
+      }
+
       // First delete all related delivery items
       await db
         .delete(deliveryItems)
@@ -307,6 +342,10 @@ export class DeliveryStorage extends BaseStorage implements IDeliveryStorage {
         .where(eq(deliveries.id, id));
     } catch (error) {
       console.error('Error deleting delivery:', error);
+      // Preserve specific validation errors; otherwise map to generic
+      if (error instanceof Error && error.message.startsWith('Cannot delete delivery note')) {
+        throw error;
+      }
       throw new Error('Failed to delete delivery');
     }
   }
