@@ -233,8 +233,30 @@ export class InventoryStorage extends BaseStorage implements IInventoryStorage {
 
   async deleteInventoryItem(id: string): Promise<void> {
     const oldItem = await this.getInventoryItem(id);
-    await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
-  await this.logAuditEvent("inventory_item", id, "deleted", undefined, oldItem, undefined);
+    if (!oldItem) {
+      throw new Error("Inventory item not found");
+    }
+    try {
+      await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
+      await this.logAuditEvent("inventory_item", id, "deleted", undefined, oldItem, undefined);
+    } catch (error: any) {
+      // Check for foreign key constraint violations
+      if (error?.code === '23503' || error?.message?.includes('foreign key constraint')) {
+        throw new Error("Cannot delete inventory item: it is referenced by other records (e.g., goods receipts, invoices, deliveries, or stock movements). Please remove those references first or force delete.");
+      }
+      throw error;
+    }
+  }
+
+  async forceDeleteInventoryItem(id: string): Promise<void> {
+    const oldItem = await this.getInventoryItem(id);
+    if (!oldItem) {
+      throw new Error("Inventory item not found");
+    }
+    // Dangerous: removes stock history. Only use when explicitly requested.
+    await this.db.delete(stockMovements).where(eq(stockMovements.itemId, id));
+    await this.db.delete(inventoryItems).where(eq(inventoryItems.id, id));
+    await this.logAuditEvent("inventory_item", id, "force_deleted", undefined, oldItem, undefined);
   }
 
   async bulkCreateInventoryItems(items: InsertInventoryItem[]): Promise<InventoryItem[]> {

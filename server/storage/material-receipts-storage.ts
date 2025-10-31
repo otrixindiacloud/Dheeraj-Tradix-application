@@ -129,14 +129,14 @@ export class MaterialReceiptsStorage {
       return value;
     }, 2));
     
+    let insertedHeader: any;
     try {
-      const [insertedHeader] = await db
+      const [header] = await db
         .insert(materialReceipt)
         .values(headerToInsert)
         .returning();
-      
+      insertedHeader = header;
       console.log('[MATERIAL RECEIPTS STORAGE] Header inserted successfully');
-      return insertedHeader;
     } catch (insertError) {
       console.error('[MATERIAL RECEIPTS STORAGE] Error inserting header:', insertError);
       console.error('[MATERIAL RECEIPTS STORAGE] Header data types:', Object.entries(headerToInsert).map(([key, value]) => ({
@@ -147,8 +147,6 @@ export class MaterialReceiptsStorage {
       })));
       throw insertError;
     }
-    
-    const insertedHeader = null as any; // This line won't be reached
     
     console.log('[MATERIAL RECEIPTS STORAGE] Header inserted:', insertedHeader);
     

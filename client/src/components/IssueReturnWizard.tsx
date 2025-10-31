@@ -217,7 +217,7 @@ export default function IssueReturnWizard({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dialog-responsive flex flex-col h-[90vh] max-h-[90vh]">
+      <DialogContent className="dialog-responsive flex flex-col h-[90vh] max-h-[90vh] w-[95vw] max-w-5xl">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />

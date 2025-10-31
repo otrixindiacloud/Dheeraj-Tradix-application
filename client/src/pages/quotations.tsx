@@ -61,6 +61,225 @@ interface Quotation {
 
 import { useAuth } from "@/components/auth/auth-context";
 
+// Helper functions for badge styling - moved to module level for reuse
+function getStatusBadgeClass(status: string) {
+  const normalizedStatus = status.toLowerCase();
+  switch (normalizedStatus) {
+    case 'draft':
+      return "bg-gray-50 text-gray-700 border-gray-200";
+    case 'under review':
+    case 'pending':
+      return "border-orange-500 text-orange-600 hover:bg-orange-50";
+    case 'approved':
+      return "bg-teal-50 text-teal-700 border-teal-200";
+    case 'sent':
+      return "bg-blue-50 text-blue-700 border-blue-200";
+    case 'accepted':
+    case 'completed':
+      return "bg-green-50 text-green-700 border-green-200";
+    case 'rejected':
+    case 'rejected by customer':
+      return "bg-red-50 text-red-700 border-red-200";
+    case 'expired':
+      return "bg-red-50 text-red-700 border-red-200";
+    case 'cancelled':
+      return "bg-gray-50 text-gray-700 border-gray-200";
+    default:
+      return "bg-gray-50 text-gray-700 border-gray-200";
+  }
+}
+
+function getApprovalBadgeClass(status: string) {
+  const normalizedStatus = status.toLowerCase();
+  switch (normalizedStatus) {
+    case 'pending':
+    case 'not required':
+      return "border-orange-500 text-orange-600 hover:bg-orange-50";
+    case 'approved':
+      return "bg-green-50 text-green-700 border-green-200";
+    case 'rejected':
+      return "bg-red-50 text-red-700 border-red-200";
+    default:
+      return "bg-gray-50 text-gray-700 border-gray-200";
+  }
+}
+
+// Helper: compute unit price using cost+markup if available, else fallback to stored unitPrice
+function computeUnitPriceFromItem(item: any): number {
+  const cost = Number(item.costPrice) || 0;
+  const markupPct = Number(item.markup) || 0;
+  const computedUnitFromMarkup = cost > 0 ? cost * (1 + Math.max(0, markupPct) / 100) : 0;
+  return computedUnitFromMarkup > 0 ? computedUnitFromMarkup : (Number(item.unitPrice) || 0);
+}
+
+// Helper: calculate totals matching Pricing/Financial Summary logic
+function calculateQuotationDocumentTotals(items: any[], quotation?: any) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { grossSubtotal: 0, totalDiscount: 0, subtotal: 0, totalTax: 0, totalAmount: 0 };
+  }
+  let grossSubtotal = 0;
+  let totalDiscount = 0;
+  let totalTax = 0;
+  items.forEach((it: any) => {
+    const qty = Number(it.quantity) || 0;
+    const unitPrice = computeUnitPriceFromItem(it);
+    const lineSubtotal = qty * unitPrice;
+    const discountPercent = Number(it.discountPercentage) || Number(quotation?.discountPercentage) || 0;
+    const discountAmount = Number(it.discountAmount) || 0;
+    let appliedDiscount = 0;
+    if (discountPercent > 0) {
+      appliedDiscount = (lineSubtotal * discountPercent) / 100;
+    } else if (discountAmount > 0) {
+      appliedDiscount = Math.min(lineSubtotal, Math.abs(discountAmount));
+    }
+    const afterDiscount = Math.max(0, lineSubtotal - appliedDiscount);
+    const taxPercent = Number(it.vatPercent) || Number(quotation?.vatPercent) || 0;
+    const taxAmount = Number(it.vatAmount) || 0;
+    let appliedTax = 0;
+    if (taxPercent > 0) {
+      appliedTax = (afterDiscount * taxPercent) / 100;
+    } else if (taxAmount > 0) {
+      appliedTax = taxAmount;
+    }
+    grossSubtotal += lineSubtotal;
+    totalDiscount += appliedDiscount;
+    totalTax += appliedTax;
+  });
+  const subtotal = Math.round((grossSubtotal - totalDiscount) * 100) / 100;
+  const totalAmount = Math.round((subtotal + totalTax) * 100) / 100;
+  return { grossSubtotal, totalDiscount, subtotal, totalTax, totalAmount };
+}
+
+// Cell component to display computed Total Amount sourced from quotation items
+function QuotationTotalCell({ quotation }: { quotation: Quotation }) {
+  const { data: items, isLoading, isError } = useQuery({
+    queryKey: ["/api/quotations", quotation.id, "items"],
+    queryFn: async () => {
+      const resp = await fetch(`/api/quotations/${quotation.id}/items`);
+      if (!resp.ok) throw new Error("Failed to fetch quotation items");
+      return resp.json();
+    },
+    staleTime: 0,
+  });
+
+  const currency = "BHD"; // Quotations currently display in BHD across the app
+  if (isLoading) {
+    return (
+      <div className="text-right">
+        <div className="font-semibold text-gray-900">{currency} {parseFloat(quotation.totalAmount || "0").toFixed(2)}</div>
+        <div className="text-xs text-gray-400">Loading items…</div>
+      </div>
+    );
+  }
+  if (isError || !Array.isArray(items)) {
+    return (
+      <div className="text-right">
+        <div className="font-semibold text-gray-900">{currency} {parseFloat(quotation.totalAmount || "0").toFixed(2)}</div>
+        <div className="text-xs text-gray-400">Using stored total</div>
+      </div>
+    );
+  }
+  const totals = calculateQuotationDocumentTotals(items, quotation);
+  return (
+    <div className="text-right">
+      <div className="font-semibold text-gray-900">{currency} {totals.totalAmount.toFixed(2)}</div>
+      <div className="text-xs text-gray-500">Subtotal: {currency} {totals.grossSubtotal.toFixed(2)}</div>
+    </div>
+  );
+}
+
+// Component for the Quotation View Dialog Content that calculates totals from items
+function QuotationViewDialogContent({ 
+  quotation,
+  onClose,
+  onNavigate
+}: { 
+  quotation: Quotation;
+  onClose: () => void;
+  onNavigate: (id: string) => void;
+}) {
+  const { data: items, isLoading } = useQuery({
+    queryKey: ["/api/quotations", quotation.id, "items"],
+    queryFn: async () => {
+      const resp = await fetch(`/api/quotations/${quotation.id}/items`);
+      if (!resp.ok) throw new Error("Failed to fetch quotation items");
+      return resp.json();
+    },
+    enabled: !!quotation?.id,
+    staleTime: 0,
+  });
+
+  // Calculate total from items, fallback to stored value
+  const currency = "BHD";
+  let displayTotal = parseFloat(quotation.totalAmount || '0');
+  
+  if (!isLoading && Array.isArray(items) && items.length > 0) {
+    const totals = calculateQuotationDocumentTotals(items, quotation);
+    displayTotal = totals.totalAmount;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+        <div>
+          <div className="text-gray-500">Quote Number</div>
+          <div className="font-medium">{quotation.quoteNumber}</div>
+        </div>
+        <div>
+          <div className="text-gray-500">Revision</div>
+          <div className="font-medium">{quotation.revision}</div>
+        </div>
+        <div>
+          <div className="text-gray-500">Status</div>
+          <Badge variant="outline" className={getStatusBadgeClass(quotation.status)}>{quotation.status}</Badge>
+        </div>
+        <div>
+          <div className="text-gray-500">Approval</div>
+          <Badge variant="outline" className={getApprovalBadgeClass(quotation.approvalStatus)}>{quotation.approvalStatus || 'N/A'}</Badge>
+        </div>
+        <div>
+          <div className="text-gray-500">Customer Type</div>
+          <div className="font-medium">{quotation.customerType}</div>
+        </div>
+        <div>
+          <div className="text-gray-500">Total</div>
+          <div className="font-semibold">
+            {isLoading ? (
+              <span className="text-gray-400">Calculating...</span>
+            ) : (
+              `${currency} ${displayTotal.toFixed(2)}`
+            )}
+          </div>
+        </div>
+        <div>
+          <div className="text-gray-500">Quote Date</div>
+          <div>{formatDate(new Date(quotation.quoteDate), 'MMM dd, yyyy')}</div>
+        </div>
+        <div>
+          <div className="text-gray-500">Valid Until</div>
+          <div>{formatDate(new Date(quotation.validUntil), 'MMM dd, yyyy')}</div>
+        </div>
+        <div>
+          <div className="text-gray-500">Created At</div>
+          <div>{formatDate(new Date(quotation.createdAt), 'MMM dd, yyyy')}</div>
+        </div>
+      </div>
+      {quotation.notes && (
+        <div>
+          <div className="text-gray-500 text-sm mb-1">Notes</div>
+          <div className="bg-gray-50 rounded-md p-3 text-sm whitespace-pre-wrap max-h-48 overflow-auto">
+            {quotation.notes}
+          </div>
+        </div>
+      )}
+      <div className="flex justify-end gap-2 pt-2">
+        <Button variant="outline" onClick={() => onNavigate(quotation.id)}>Open Full Page</Button>
+        <Button onClick={onClose}>Close</Button>
+      </div>
+    </div>
+  );
+}
+
 export default function QuotationsPage() {
   const [, navigate] = useLocation();
   // Get current user from auth context
@@ -471,49 +690,6 @@ export default function QuotationsPage() {
     }
   };
 
-  // Helper functions for badge styling similar to customer management
-  const getStatusBadgeClass = (status: string) => {
-    const normalizedStatus = status.toLowerCase();
-    switch (normalizedStatus) {
-      case 'draft':
-        return "bg-gray-50 text-gray-700 border-gray-200";
-      case 'under review':
-      case 'pending':
-        return "border-orange-500 text-orange-600 hover:bg-orange-50";
-      case 'approved':
-        return "bg-teal-50 text-teal-700 border-teal-200";
-      case 'sent':
-        return "bg-blue-50 text-blue-700 border-blue-200";
-      case 'accepted':
-      case 'completed':
-        return "bg-green-50 text-green-700 border-green-200";
-      case 'rejected':
-      case 'rejected by customer':
-        return "bg-red-50 text-red-700 border-red-200";
-      case 'expired':
-        return "bg-red-50 text-red-700 border-red-200";
-      case 'cancelled':
-        return "bg-gray-50 text-gray-700 border-gray-200";
-      default:
-        return "bg-gray-50 text-gray-700 border-gray-200";
-    }
-  };
-
-  const getApprovalBadgeClass = (status: string) => {
-    const normalizedStatus = status.toLowerCase();
-    switch (normalizedStatus) {
-      case 'pending':
-      case 'not required':
-        return "border-orange-500 text-orange-600 hover:bg-orange-50";
-      case 'approved':
-        return "bg-green-50 text-green-700 border-green-200";
-      case 'rejected':
-        return "bg-red-50 text-red-700 border-red-200";
-      default:
-        return "bg-gray-50 text-gray-700 border-gray-200";
-    }
-  };
-
   const columns = [
     {
       key: "quoteNumber",
@@ -576,18 +752,8 @@ export default function QuotationsPage() {
       key: "totalAmount",
       header: "Total Amount",
       className: "text-right",
-      render: (value: string, quotation: Quotation) => (
-        <div className="text-right">
-          <div className="font-semibold text-gray-900">BHD {parseFloat(value || "0").toFixed(2)}</div>
-          <div className="text-xs text-gray-500">
-            Subtotal: BHD {parseFloat(quotation.subtotal || "0").toFixed(2)}
-          </div>
-          {parseFloat(quotation.discountPercentage || "0") > 0 && (
-            <div className="text-xs text-green-600">
-              -{quotation.discountPercentage}% discount
-            </div>
-          )}
-        </div>
+      render: (_: string, quotation: Quotation) => (
+        <QuotationTotalCell quotation={quotation} />
       ),
     },
     {
@@ -940,58 +1106,11 @@ export default function QuotationsPage() {
             <DialogTitle>Quotation Details</DialogTitle>
           </DialogHeader>
           {viewQuotation ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <div className="text-gray-500">Quote Number</div>
-                  <div className="font-medium">{viewQuotation.quoteNumber}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500">Revision</div>
-                  <div className="font-medium">{viewQuotation.revision}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500">Status</div>
-                  <Badge variant="outline" className={getStatusBadgeClass(viewQuotation.status)}>{viewQuotation.status}</Badge>
-                </div>
-                <div>
-                  <div className="text-gray-500">Approval</div>
-                  <Badge variant="outline" className={getApprovalBadgeClass(viewQuotation.approvalStatus)}>{viewQuotation.approvalStatus || 'N/A'}</Badge>
-                </div>
-                <div>
-                  <div className="text-gray-500">Customer Type</div>
-                  <div className="font-medium">{viewQuotation.customerType}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500">Total</div>
-                  <div className="font-semibold">{parseFloat(viewQuotation.totalAmount || '0').toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500">Quote Date</div>
-                  <div>{formatDate(new Date(viewQuotation.quoteDate), 'MMM dd, yyyy')}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500">Valid Until</div>
-                  <div>{formatDate(new Date(viewQuotation.validUntil), 'MMM dd, yyyy')}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500">Created At</div>
-                  <div>{formatDate(new Date(viewQuotation.createdAt), 'MMM dd, yyyy')}</div>
-                </div>
-              </div>
-              {viewQuotation.notes && (
-                <div>
-                  <div className="text-gray-500 text-sm mb-1">Notes</div>
-                  <div className="bg-gray-50 rounded-md p-3 text-sm whitespace-pre-wrap max-h-48 overflow-auto">
-                    {viewQuotation.notes}
-                  </div>
-                </div>
-              )}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => navigate(`/quotations/${viewQuotation.id}`)}>Open Full Page</Button>
-                <Button onClick={() => setShowViewDialog(false)}>Close</Button>
-              </div>
-            </div>
+            <QuotationViewDialogContent 
+              quotation={viewQuotation}
+              onClose={() => setShowViewDialog(false)}
+              onNavigate={(id) => navigate(`/quotations/${id}`)}
+            />
           ) : (
             <div className="text-sm text-gray-500">No quotation selected.</div>
           )}

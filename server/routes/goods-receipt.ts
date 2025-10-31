@@ -664,11 +664,23 @@ export function registerGoodsReceiptRoutes(app: Express) {
         }
       }
 
+      // Get supplier LPO information (optional, enriches PDF)
+      let supplierLpo: any = undefined;
+      if ((goodsReceipt as any).supplierLpoId) {
+        try {
+          supplierLpo = await storage.getSupplierLpo((goodsReceipt as any).supplierLpoId);
+          console.log(`[GOODS RECEIPT PDF] Fetched supplier LPO:`, supplierLpo ? supplierLpo.id : 'none');
+        } catch (error) {
+          console.warn("Could not fetch supplier LPO:", error);
+        }
+      }
+
       console.log(`Generating PDF for goods receipt: ${goodsReceiptId}, items count: ${items.length}`);
       const result = generateGoodsReceiptPdf({ 
         goodsReceipt: goodsReceipt as any, 
         items: items as any, 
         supplier: supplier as any,
+        supplierLpo: supplierLpo as any,
         mode: mode as 'enhanced' | 'simple'
       });
       sendPdf(res, result);

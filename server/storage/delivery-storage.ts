@@ -122,7 +122,9 @@ export class DeliveryStorage extends BaseStorage implements IDeliveryStorage {
           id: rawCust.id,
           name: rawCust.name || rawCust.customerName || rawCust.companyName || rawCust.fullName || rawCust.customer_name || null,
           customerType: rawCust.customerType || rawCust.customer_type || null,
-          address: rawCust.address || rawCust.billingAddress || rawCust.billing_address || null
+          address: rawCust.address || rawCust.billingAddress || rawCust.billing_address || null,
+          email: rawCust.email || null,
+          phone: rawCust.phone || null
         } : null;
         const so: any = (row as any).sales_orders;
         const delivery: any = (row as any).deliveries;
@@ -157,7 +159,9 @@ export class DeliveryStorage extends BaseStorage implements IDeliveryStorage {
         id: rawCust.id,
         name: rawCust.name || rawCust.customerName || rawCust.companyName || rawCust.fullName || rawCust.customer_name || null,
         customerType: rawCust.customerType || rawCust.customer_type || null,
-        address: rawCust.address || rawCust.billingAddress || rawCust.billing_address || null
+        address: rawCust.address || rawCust.billingAddress || rawCust.billing_address || null,
+        email: rawCust.email || null,
+        phone: rawCust.phone || null
       } : null;
       const deliveryRow: any = row.deliveries || row.delivery_note || row;
       const allowedStatuses = ['Pending', 'Cancelled', 'Partial', 'Complete'];

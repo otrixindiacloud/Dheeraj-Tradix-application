@@ -489,7 +489,21 @@ export default function QuotationDetailPage() {
       doc.setTextColor(60, 60, 60);
       doc.text(`Date: ${formatDate(new Date(quotation.quoteDate || quotation.createdAt), "MMM dd, yyyy")}`, pageWidth - 20, 30, { align: 'right' });
       doc.text(`Quote #: ${quotation.quoteNumber}`, pageWidth - 20, 35, { align: 'right' });
-      doc.text(`Valid Until: ${formatDate(new Date(quotation.validUntil), "MMM dd, yyyy")}`, pageWidth - 20, 40, { align: 'right' });
+      // Quotation Status in header (client-side)
+      const rawStatus = String(quotation.status || '').trim();
+      const approvalStatus = String((quotation as any).approvalStatus || '').trim();
+      let displayStatus = 'Pending';
+      if (rawStatus.toLowerCase() === 'draft') {
+        displayStatus = 'Draft';
+      } else if (approvalStatus.toLowerCase() === 'approved') {
+        displayStatus = 'Approved';
+      } else if (approvalStatus) {
+        displayStatus = approvalStatus;
+      } else if (rawStatus) {
+        displayStatus = rawStatus;
+      }
+      doc.text(`Status: ${displayStatus}`, pageWidth - 20, 40, { align: 'right' });
+      doc.text(`Valid Until: ${formatDate(new Date(quotation.validUntil), "MMM dd, yyyy")}`, pageWidth - 20, 45, { align: 'right' });
       
       // Horizontal line separator
       doc.setDrawColor(218, 165, 32);
@@ -507,7 +521,6 @@ export default function QuotationDetailPage() {
       doc.setFont('helvetica', 'normal');
       doc.text(`Customer: ${customerName}`, 25, 68);
       doc.text(`Customer Type: ${quotation.customerType}`, 25, 74);
-      doc.text(`Status: ${quotation.status}`, pageWidth - 80, 68);
       
       // Items table
       if (quotationItems && quotationItems.length > 0) {

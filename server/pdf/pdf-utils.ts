@@ -1367,6 +1367,7 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
   // Customer Information - Left Side (no box)
   const custName = (customer as any).customerName || customer.name || 'N/A';
   const custAddress = customer.address || 'N/A';
+  const custPhone = (customer as any).contactPhone || (customer as any).phone || customer.phone || 'N/A';
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -1383,6 +1384,15 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
   const addressY = nameY + nameDims.h + 2;
   doc.text(addressLines, leftColX, addressY);
   const addressDims = doc.getTextDimensions(addressLines);
+  // Optional phone line
+  let leftBlockBottom = addressY + addressDims.h;
+  if (custPhone && custPhone !== 'N/A') {
+    const phoneLines = doc.splitTextToSize(`Phone: ${custPhone}`, leftColMaxWidth);
+    const phoneY = addressY + addressDims.h + 2;
+    doc.text(phoneLines, leftColX, phoneY);
+    const phoneDims = doc.getTextDimensions(phoneLines);
+    leftBlockBottom = phoneY + phoneDims.h;
+  }
   
   // Delivery Information - Right Side (no box)
   doc.setFont('helvetica', 'bold');
@@ -1395,7 +1405,6 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
     doc.text(`Tracking: ${deliveryNote.trackingNumber}`, rightColX, afterMeta + 23, { align: 'right' });
   }
 
-  const leftBlockBottom = addressY + addressDims.h;
   const rightBlockBottom = afterMeta + (hasTracking ? 23 : 17);
   const afterAddress = Math.max(leftBlockBottom, rightBlockBottom) + 6;
   
@@ -1498,7 +1507,8 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
       lineWidth: 0.1,
       overflow: 'linebreak',
       cellWidth: 'wrap',
-      textColor: [0, 0, 0]
+      textColor: [0, 0, 0],
+      minCellHeight: 8
     },
     headStyles: { 
       fillColor: [255, 255, 255],
@@ -1508,13 +1518,14 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
       fontSize: 7,
       cellPadding: 0.5,
       lineColor: [0, 0, 0],
-      lineWidth: 0.1
+      lineWidth: 0.1,
+      minCellHeight: 10
     },
     columnStyles: {
-      0: { cellWidth: 12, halign:'center' },
-      1: { cellWidth: 90, halign: 'left' },
-      2: { cellWidth: 30, halign:'center' },
-      3: { cellWidth: 30, halign:'center' }
+      0: { cellWidth: 12, halign:'center', minCellHeight: 8 },
+      1: { cellWidth: 50, halign: 'left', minCellHeight: 8 },
+      2: { cellWidth: 65, halign:'center', minCellHeight: 8 },
+      3: { cellWidth: 56, halign:'center', minCellHeight: 8 }
     },
     alternateRowStyles: {
       fillColor: [248, 249, 250]
@@ -1872,12 +1883,13 @@ export interface GoodsReceiptPdfContext {
   goodsReceipt: any; // GoodsReceiptHeader type
   items: any[]; // GoodsReceiptItem type
   supplier: any; // Supplier type
+  supplierLpo?: any; // SupplierLpo type
   mode?: 'enhanced' | 'simple';
 }
 
 // Goods Receipt PDF Generation - Professional design matching the screenshot
 export function buildEnhancedGoodsReceiptPdf(ctx: GoodsReceiptPdfContext): Buffer {
-  const { goodsReceipt, items, supplier } = ctx;
+  const { goodsReceipt, items, supplier, supplierLpo } = ctx;
   const doc = baseDoc();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -1908,6 +1920,13 @@ export function buildEnhancedGoodsReceiptPdf(ctx: GoodsReceiptPdfContext): Buffe
   const expectedDate = fmtDate(goodsReceipt.expectedDeliveryDate);
   if (expectedDate) {
     doc.text(`Expected: ${expectedDate}`, pageWidth - 15, 40, { align: 'right' });
+  }
+  // LPO quick refs
+  if (supplierLpo) {
+    const lpoNumber = supplierLpo.lpoNumber || supplierLpo.number || supplierLpo.id;
+    const lpoCurrency = supplierLpo.currency || goodsReceipt.lpoCurrency || 'BHD';
+    doc.text(`LPO: ${lpoNumber || 'N/A'}`, pageWidth - 15, 45, { align: 'right' });
+    doc.text(`Currency: ${lpoCurrency}`, pageWidth - 15, 50, { align: 'right' });
   }
   
   // Horizontal line separator
@@ -1984,18 +2003,29 @@ export function buildEnhancedGoodsReceiptPdf(ctx: GoodsReceiptPdfContext): Buffe
 
   const afterAddress = (doc as any).lastAutoTable.finalY + 5;
   
-  // Item Details Table - matching the screenshot with Items, Expected, Received, Discrepancy columns
+  // Item Details Table - with Description, Expected, Received, Discrepancy, Unit Cost, Discount, Tax, Total
+  const asMoney = (v: any) => {
+    const num = Number(typeof v === 'string' ? v : (v ?? 0));
+    return num.toFixed(2);
+  };
   const itemRows = items.map((it:any,i:number)=> {
     const expected = Number(it.quantityExpected || 0);
     const received = Number(it.quantityReceived || 0);
     const discrepancy = expected - received;
-    const discrepancyText = discrepancy === 0 ? 'NO' : discrepancy.toString();
-    
+    const unitCost = Number(it.unitCost || 0);
+    const discount = Number(it.discountAmount || 0);
+    const tax = Number(it.taxAmount || 0);
+    const baseTotal = unitCost * (received || expected);
+    const total = baseTotal - discount + tax;
     return [
-      (i+1).toString(),
+      (it.itemDescription || it.description || `Item ${i+1}`).toString(),
       expected.toString(),
       received.toString(),
-      discrepancyText
+      (discrepancy === 0 ? 'NO' : discrepancy.toString()),
+      asMoney(unitCost),
+      asMoney(discount),
+      asMoney(tax),
+      asMoney(total)
     ];
   });
   
@@ -2006,7 +2036,7 @@ export function buildEnhancedGoodsReceiptPdf(ctx: GoodsReceiptPdfContext): Buffe
   
   autoTable(doc, {
     startY: afterAddress,
-    head: [[ 'Items', 'Expected', 'Received', 'Discrepancy' ]],
+    head: [[ 'Item Description', 'Expected', 'Received', 'Discrepancy', 'Unit Cost', 'Discount', 'Tax', 'Total' ]],
     body: itemRows,
     styles: { 
       fontSize: 7, 
@@ -2029,10 +2059,14 @@ export function buildEnhancedGoodsReceiptPdf(ctx: GoodsReceiptPdfContext): Buffe
       lineWidth: 0.1
     },
     columnStyles: {
-      0: { cellWidth: 30, halign:'center' }, // Items
-      1: { cellWidth: 30, halign:'center' }, // Expected
-      2: { cellWidth: 30, halign:'center' }, // Received
-      3: { cellWidth: 30, halign:'center' }  // Discrepancy
+      0: { cellWidth: Math.max(70, (pageWidth - 30) * 0.32), halign:'left' }, // Description
+      1: { cellWidth: 25, halign:'center' }, // Expected
+      2: { cellWidth: 25, halign:'center' }, // Received
+      3: { cellWidth: 28, halign:'center' }, // Discrepancy
+      4: { cellWidth: 28, halign:'right' },  // Unit Cost
+      5: { cellWidth: 28, halign:'right' },  // Discount
+      6: { cellWidth: 28, halign:'right' },  // Tax
+      7: { cellWidth: 30, halign:'right' }   // Total
     },
     alternateRowStyles: {
       fillColor: [248, 249, 250]
@@ -2048,8 +2082,8 @@ export function buildEnhancedGoodsReceiptPdf(ctx: GoodsReceiptPdfContext): Buffe
   // Notes Section - matching the screenshot format
   const notes = goodsReceipt.notes || '';
   const shipmentRef = goodsReceipt.shipmentReference || `SHP-TEMP-${Date.now()}`;
-  const lpoValue = goodsReceipt.lpoValue || '0.00';
-  const currency = goodsReceipt.lpoCurrency || 'BHD';
+  const lpoValue = (supplierLpo?.totalAmount ?? goodsReceipt.lpoValue) || '0.00';
+  const currency = (supplierLpo?.currency ?? goodsReceipt.lpoCurrency) || 'BHD';
   const supplierId = goodsReceipt.supplierId || 'N/A';
   
   const notesContent = `Generated from shipment ${shipmentRef}. Supplier: ${supplierName}. Customer: Unknown. Value: ${currency} ${lpoValue}. Supplier ID: ${supplierId}`;

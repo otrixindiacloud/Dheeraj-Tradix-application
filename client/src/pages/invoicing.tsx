@@ -534,10 +534,18 @@ export default function Invoicing() {
   const deliveriesWithInvoices = allCompletedDeliveries?.filter((delivery: any) => delivery.hasInvoice) || [];
   
   // Categorize deliveries for Partial and Full Invoice tabs
-  // Partial Invoice: All deliveries (can generate partial from any)
+  // Partial Invoice: All completed deliveries (partial can be generated from any completed delivery)
   const deliveriesForPartialInvoice = allCompletedDeliveries || [];
-  // Full Invoice: Deliveries with invoices (can view/regenerate full invoice) or without invoices (can generate full)
-  const deliveriesForFullInvoice = allCompletedDeliveries || [];
+  // Full Invoice: Only deliveries explicitly marked as Full delivery type
+  const deliveriesForFullInvoice = (allCompletedDeliveries || []).filter((delivery: any) => {
+    const type = (delivery?.deliveryType || "").toLowerCase();
+    return type === "full";
+  });
+  // Partial delivery type (anything that's not Full)
+  const deliveriesForPartialType = (allCompletedDeliveries || []).filter((delivery: any) => {
+    const type = (delivery?.deliveryType || "").toLowerCase();
+    return type !== "full";
+  });
 
   // Enrich invoices with customer names from customers API
   const enrichedInvoices = invoices?.map((invoice: any) => {
@@ -1105,7 +1113,7 @@ export default function Invoicing() {
               </Select>
             </div>
             
-            {/* Filter Tabs */}
+            {/* Filter Tabs: Filter by delivery type (Full/Partial) */}
             <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
               <button
                 onClick={() => setDeliveryFilter("all")}
@@ -1118,16 +1126,6 @@ export default function Invoicing() {
                 All Deliveries ({allCompletedDeliveries?.length || 0})
               </button>
               <button
-                onClick={() => setDeliveryFilter("partial")}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  deliveryFilter === "partial" 
-                    ? "bg-white text-gray-900 shadow-sm" 
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                Partial Invoice ({deliveriesForPartialInvoice?.length || 0})
-              </button>
-              <button
                 onClick={() => setDeliveryFilter("full")}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   deliveryFilter === "full" 
@@ -1135,7 +1133,17 @@ export default function Invoicing() {
                     : "text-gray-600 hover:text-gray-900"
                 }`}
               >
-                Full Invoice ({deliveriesForFullInvoice?.length || 0})
+                Full ({deliveriesForFullInvoice?.length || 0})
+              </button>
+              <button
+                onClick={() => setDeliveryFilter("partial")}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  deliveryFilter === "partial" 
+                    ? "bg-white text-gray-900 shadow-sm" 
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Partial ({deliveriesForPartialType?.length || 0})
               </button>
             </div>
             <div className="max-h-80 overflow-y-auto border rounded-md divide-y" data-testid="list-deliveries-for-invoice">
@@ -1158,13 +1166,16 @@ export default function Invoicing() {
                   );
                 }
 
-                // Filter deliveries based on the selected filter
+                // Filter deliveries based on delivery type (Full/Partial)
                 let filteredDeliveries = [];
-                if (deliveryFilter === "partial") {
-                  filteredDeliveries = deliveriesForPartialInvoice || [];
-                } else if (deliveryFilter === "full") {
+                if (deliveryFilter === "full") {
+                  // Show only Full delivery type
                   filteredDeliveries = deliveriesForFullInvoice || [];
+                } else if (deliveryFilter === "partial") {
+                  // Show only Partial delivery type (anything that's not Full)
+                  filteredDeliveries = deliveriesForPartialType || [];
                 } else {
+                  // Show all deliveries
                   filteredDeliveries = allCompletedDeliveries || [];
                 }
 
@@ -1183,23 +1194,26 @@ export default function Invoicing() {
                 if (searchFilteredDeliveries.length === 0) {
                   return (
                     <div className="p-4 text-sm text-gray-500 text-center" data-testid="empty-no-deliveries">
-                      {deliveryFilter === "partial" ? "No deliveries available for partial invoicing." :
-                       deliveryFilter === "full" ? "No deliveries available for full invoicing." :
+                      {deliveryFilter === "full" ? "No Full deliveries available for invoicing." :
+                       deliveryFilter === "partial" ? "No Partial deliveries available for invoicing." :
                        "No deliveries available for invoicing."}
                     </div>
                   );
                 }
 
                 // Map deliveries if found
-                return searchFilteredDeliveries.map((delivery: any) => (
+                return searchFilteredDeliveries.map((delivery: any) => {
+                  const isFullDelivery = (delivery?.deliveryType || "").toLowerCase() === "full";
+                  const canGenerateFull = !delivery.hasInvoice && isFullDelivery;
+                  return (
                   <div key={delivery.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p
-                          className={`text-sm font-medium ${!delivery.hasInvoice ? 'text-blue-700 cursor-pointer hover:underline' : 'text-gray-900'}`}
-                          title={!delivery.hasInvoice ? 'Click to generate full invoice from this delivery' : undefined}
+                          className={`text-sm font-medium ${canGenerateFull ? 'text-blue-700 cursor-pointer hover:underline' : 'text-gray-900'}`}
+                          title={canGenerateFull ? 'Click to generate full invoice from this delivery' : undefined}
                           onClick={() => {
-                            if (!delivery.hasInvoice) {
+                            if (canGenerateFull) {
                               createInvoice.mutate({ deliveryId: delivery.id, invoiceType, selectedItems: undefined });
                             }
                           }}
@@ -1227,7 +1241,15 @@ export default function Invoicing() {
                         </p>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-3">
+                      <Badge
+                        variant="outline"
+                        className={`${isFullDelivery ? 'border-green-300 text-green-700 bg-green-50' : 'border-yellow-300 text-yellow-700 bg-yellow-50'}`}
+                        title="Delivery Type"
+                      >
+                        {isFullDelivery ? 'Full' : 'Partial'}
+                      </Badge>
+                      <div className="flex gap-2">
                       {!delivery.hasInvoice ? (
                         <>
                           <Button
@@ -1242,67 +1264,30 @@ export default function Invoicing() {
                             data-testid={`button-partial-invoice-${delivery.id}`}
                             className={invoiceType === "Proforma" ? "border-purple-300 text-purple-700 hover:bg-purple-50" : ""}
                           >
-                            {invoiceType === "Proforma" ? "Partial Proforma" : "Partial"}
-                          </Button>
-                          
-                          <Button
-                            size="sm"
-                            onClick={() => createInvoice.mutate({ deliveryId: delivery.id, invoiceType, selectedItems: undefined })}
-                            disabled={createInvoice.isPending}
-                            data-testid={`button-generate-invoice-${delivery.id}`}
-                            className={invoiceType === "Proforma" ? "bg-purple-600 hover:bg-purple-700 text-white" : ""}
-                          >
-                            {createInvoice.isPending ? "Generating..." : invoiceType === "Proforma" ? "Generate Proforma" : "Full"}
+                            {invoiceType === "Proforma" ? "Create Proforma" : "Create"}
                           </Button>
                         </>
                       ) : (
-                        <div className="flex flex-col gap-1">
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedDeliveryForInvoice(delivery);
-                                setSelectedDeliveryItems({});
-                                setShowPartialInvoiceDialog(true);
-                              }}
-                              disabled={createInvoice.isPending}
-                              data-testid={`button-partial-invoice-existing-${delivery.id}`}
-                              className={invoiceType === "Proforma" ? "border-purple-300 text-purple-700 hover:bg-purple-50" : ""}
-                            >
-                              {invoiceType === "Proforma" ? "Partial Proforma" : "Partial"}
-                            </Button>
-                            
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              // Open invoice PDF in new tab
-                              console.log('Delivery existingInvoice data:', delivery.existingInvoice);
-                              console.log('Invoice ID:', delivery.existingInvoice.id);
-                              console.log('Invoice Number:', delivery.existingInvoice.invoiceNumber);
-                              console.log('Invoice Type:', delivery.existingInvoice.invoiceType);
-                              viewInvoicePDF(delivery.existingInvoice.id, delivery.existingInvoice.invoiceNumber, delivery.existingInvoice.invoiceType || 'Standard');
-                            }}
-                            data-testid={`button-view-invoice-${delivery.id}`}
-                          >
-                            View Invoice
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => createInvoice.mutate({ deliveryId: delivery.id, invoiceType, selectedItems: undefined })}
-                            disabled={createInvoice.isPending}
-                            data-testid={`button-full-invoice-${delivery.id}`}
-                            className={invoiceType === "Proforma" ? "bg-purple-600 hover:bg-purple-700 text-white" : ""}
-                          >
-                            {createInvoice.isPending ? "Generating..." : invoiceType === "Proforma" ? "Generate Proforma" : "Full Invoice"}
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedDeliveryForInvoice(delivery);
+                            setSelectedDeliveryItems({});
+                            setShowPartialInvoiceDialog(true);
+                          }}
+                          disabled={createInvoice.isPending}
+                          data-testid={`button-partial-invoice-existing-${delivery.id}`}
+                          className={invoiceType === "Proforma" ? "border-purple-300 text-purple-700 hover:bg-purple-50" : ""}
+                        >
+                          {invoiceType === "Proforma" ? "Create Proforma" : "Create"}
+                        </Button>
                       )}
+                      </div>
                     </div>
                   </div>
-                ));
+                );
+                });
               })()}
             </div>
             <div className="flex justify-end">

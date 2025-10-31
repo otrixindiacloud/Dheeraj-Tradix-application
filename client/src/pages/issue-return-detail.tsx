@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { format as formatDateFns } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -87,11 +88,7 @@ export default function IssueReturnDetailPage() {
     enabled: !!issueReturnId,
     queryFn: async () => {
       if (!issueReturnId) return null;
-      const res = await fetch(`/api/issue-returns/${issueReturnId}`);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Failed to load issue return');
-      }
+      const res = await apiRequest('GET', `/api/issue-returns/${issueReturnId}`);
       return res.json();
     }
   });

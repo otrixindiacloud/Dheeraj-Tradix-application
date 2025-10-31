@@ -96,11 +96,31 @@ export function registerInventoryRoutes(app: Express) {
 
   app.delete("/api/inventory-items/:id", async (req, res) => {
     try {
+      const force = String(req.query.force || '').toLowerCase() === 'true';
+      if (force) {
+        const s: any = storage as any;
+        if (typeof s.forceDeleteInventoryItem === 'function') {
+          await s.forceDeleteInventoryItem(req.params.id);
+          return res.status(204).send();
+        }
+        if (s.inventoryStorage && typeof s.inventoryStorage.forceDeleteInventoryItem === 'function') {
+          await s.inventoryStorage.forceDeleteInventoryItem(req.params.id);
+          return res.status(204).send();
+        }
+        throw new Error("Force delete not available in current storage implementation");
+      }
       await storage.deleteInventoryItem(req.params.id);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting inventory item:", error);
-      res.status(500).json({ message: "Failed to delete inventory item" });
+      // Handle specific error cases
+      if (error?.message?.includes("not found")) {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error?.message?.includes("referenced by other records") || error?.code === '23503') {
+        return res.status(400).json({ message: error.message || "Cannot delete inventory item: it is referenced by other records." });
+      }
+      res.status(500).json({ message: error?.message || "Failed to delete inventory item" });
     }
   });
 

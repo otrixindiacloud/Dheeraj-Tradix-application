@@ -622,7 +622,7 @@ export default function MaterialRequestsPage() {
                 New Request
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl w-[95vw] max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Material Request</DialogTitle>
               <DialogDescription>
@@ -778,7 +778,43 @@ export default function MaterialRequestsPage() {
                     )}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="justification"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Justification</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Explain the business need for this request..."
+                            rows={3}
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Additional Notes</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Any additional information..."
+                            rows={3}
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
                     name="totalEstimatedCost"
@@ -797,40 +833,6 @@ export default function MaterialRequestsPage() {
                           />
                         </FormControl>
                         <p className="text-xs text-gray-600">Auto-calculated from items</p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="justification"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Justification</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Explain the business need for this request..."
-                            rows={2}
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Additional Notes</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Any additional information..."
-                            rows={2}
-                            {...field} 
-                          />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -855,16 +857,16 @@ export default function MaterialRequestsPage() {
                   {requestItems.length > 0 ? (
                     <div className="border rounded-lg overflow-x-auto">
                       <div className="min-w-[700px] grid grid-cols-12 gap-0 p-3 bg-gray-50 text-sm font-semibold border-b">
-                        <div className="col-span-4 pl-2">Description</div>
+                        <div className="col-span-3 pl-2">Description</div>
                         <div className="col-span-2 text-center">Quantity</div>
                         <div className="col-span-2 text-center">Unit</div>
                         <div className="col-span-2 text-center">Cost</div>
-                        <div className="col-span-1 text-center">Total</div>
+                        <div className="col-span-2 text-center">Total</div>
                         <div className="col-span-1 text-center">Actions</div>
                       </div>
                       {requestItems.map((item) => (
                         <div key={item.id} className="min-w-[700px] grid grid-cols-12 gap-0 p-3 border-b last:border-b-0 items-center">
-                          <div className="col-span-4 pl-2">
+                          <div className="col-span-3 pl-2">
                             <p className="font-medium leading-tight">{item.itemDescription}</p>
                             {item.specification && (
                               <p className="text-xs text-gray-600 mt-1">{item.specification}</p>
@@ -873,7 +875,7 @@ export default function MaterialRequestsPage() {
                           <div className="col-span-2 text-center">{item.quantity}</div>
                           <div className="col-span-2 text-center">{item.unitOfMeasure}</div>
                           <div className="col-span-2 text-center">{Number(item.estimatedCost).toLocaleString()}</div>
-                          <div className="col-span-1 text-center font-medium">
+                          <div className="col-span-2 text-center font-medium">
                             {Number(item.quantity * item.estimatedCost).toLocaleString()}
                           </div>
                           <div className="col-span-1 text-center flex gap-1 justify-center">
@@ -1004,110 +1006,6 @@ export default function MaterialRequestsPage() {
           </Form>
         </DialogContent>
       </Dialog>
-      {/* Item-level Edit Dialog */}
-      <Dialog open={showEditItemDialog} onOpenChange={setShowEditItemDialog}>
-        <DialogContent className="max-w-3xl w-[80vw] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Request Item</DialogTitle>
-            <DialogDescription>Edit the details of this material item.</DialogDescription>
-          </DialogHeader>
-          <Form {...editItemForm}>
-            <form onSubmit={editItemForm.handleSubmit(onEditItemSubmit)} className="space-y-3">
-              <FormField control={editItemForm.control} name="itemDescription" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Item Description</FormLabel>
-                  <FormControl><Input placeholder="Enter item description" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <div className="grid grid-cols-3 gap-4">
-                <FormField control={editItemForm.control} name="quantity" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantity</FormLabel>
-                    <FormControl><Input type="number" min="1" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 1)} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={editItemForm.control} name="unitOfMeasure" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit of Measure</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select unit" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {unitOptions.map((unit) => (
-                          <SelectItem key={unit} value={unit}>
-                            {unit}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={editItemForm.control} name="estimatedCost" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit Cost</FormLabel>
-                    <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={editItemForm.control} name="preferredSupplier" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Preferred Supplier (Optional)</FormLabel>
-                    <FormControl>
-                      <Select value={field.value || "none"} onValueChange={(value) => field.onChange(value === "none" ? "" : value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a supplier" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {suppliers.map((supplier: any) => (
-                            <SelectItem key={supplier.id} value={supplier.name}>
-                              {supplier.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={editItemForm.control} name="urgency" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Urgency</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select urgency" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="Standard">Standard</SelectItem>
-                        <SelectItem value="Urgent">Urgent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-              <FormField control={editItemForm.control} name="specification" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Specification (Optional)</FormLabel>
-                  <FormControl><Textarea placeholder="Enter detailed specifications..." rows={3} {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setShowEditItemDialog(false)}>Cancel</Button>
-                <Button type="submit">Save Changes</Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-  // ...existing code...
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500 border border-dashed rounded-lg">

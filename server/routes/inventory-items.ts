@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { InventoryItemsStorage } from "../storage/inventory-items-storage";
+import { InventoryStorage } from "../storage/inventory-storage";
 import { z } from "zod";
 import { insertInventoryItemSchema } from "@shared/schema";
 
 const router = Router();
 const storage = new InventoryItemsStorage();
+const inventoryStorage = new InventoryStorage();
 
 // GET /api/inventory-items
 router.get("/", async (req, res) => {
@@ -49,9 +51,23 @@ router.post("/", async (req, res) => {
     if (err instanceof z.ZodError) {
       return res.status(400).json({ message: "Invalid inventory item data", errors: err.errors });
     }
-    // Handle common unique constraint error (e.g., supplier_code already exists)
+    // Handle unique constraint error (e.g., supplier_code already exists)
     if (err?.code === "23505") {
-      return res.status(409).json({ message: "Supplier code already exists" });
+      try {
+        const supplierCode: string | undefined = req.body?.supplierCode;
+        if (supplierCode) {
+          // Return the existing item instead of failing the request
+          const existing = await inventoryStorage.getInventoryItemBySupplierCode(supplierCode);
+          if (existing) {
+            return res.status(200).json(existing);
+          }
+        }
+        // Fallback: treat as conflict but with a friendlier 200 + echo payload
+        return res.status(200).json({ message: "Item with this supplier code already exists" });
+      } catch (lookupErr) {
+        // If lookup fails for any reason, respond with conflict to avoid masking other issues
+        return res.status(409).json({ message: "Supplier code already exists" });
+      }
     }
     console.error("Error creating inventory item:", err);
     res.status(500).json({ message: "Failed to create item" });

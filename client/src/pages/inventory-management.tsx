@@ -190,11 +190,35 @@ function InventoryItemsTab() {
       await apiRequest("DELETE", `/api/inventory-items/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory-items"] });
+      // Invalidate all inventory item queries regardless of filters
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-items"], exact: false });
       toast({ title: "Success", description: "Inventory item deleted successfully" });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    onError: (error: any, id: string) => {
+      console.error("Delete inventory item error:", error);
+      const message = String(error?.message || "");
+      if (message.includes("referenced by other records") || message.includes("stock movements")) {
+        const proceed = confirm("This item has stock history and cannot be deleted. Do you want to force delete it and remove all related stock movements? This cannot be undone.");
+        if (proceed) {
+          // Retry with force=true
+          const forceDelete = async () => {
+            await apiRequest("DELETE", `/api/inventory-items/${id}?force=true`);
+          };
+          forceDelete()
+            .then(() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/inventory-items"], exact: false });
+              toast({ title: "Success", description: "Inventory item force-deleted (history removed)" });
+            })
+            .catch((e: any) => {
+              toast({ title: "Error", description: e?.message || "Force delete failed", variant: "destructive" });
+            });
+        } else {
+          toast({ title: "Aborted", description: "Item was not deleted" });
+        }
+      } else {
+        const errorMessage = message || "Failed to delete inventory item.";
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
     },
   });
 

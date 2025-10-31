@@ -270,6 +270,8 @@ export default function DeliveryNote() {
   const [remainingBySoItem, setRemainingBySoItem] = useState<Record<string, number>>({});
   // Delivery type selector to guide UX (prefill quantities); actual type is derived from entered quantities
   const [deliveryTypeSelection, setDeliveryTypeSelection] = useState<'Full' | 'Partial'>('Partial');
+  // Whether the selected SO already has at least one previous delivery (disables Full delivery creation)
+  const [hasPreviousDeliveriesForSelectedSO, setHasPreviousDeliveriesForSelectedSO] = useState(false);
 
   // Helper to format ISO or date string for datetime-local input (strip seconds & timezone)
   // Download PDF from server
@@ -529,6 +531,7 @@ export default function DeliveryNote() {
           // Always compute aggregated delivered quantities from all previous delivery notes
           const deliveredMap = await computeDeliveredMap();
           const hasPreviousDeliveries = Object.keys(deliveredMap).length > 0;
+          setHasPreviousDeliveriesForSelectedSO(hasPreviousDeliveries);
 
           // Calculate remaining quantities for each item (store in state for max validation)
           const remainingMap: Record<string, number> = {};
@@ -549,7 +552,7 @@ export default function DeliveryNote() {
               const soItemId = (it as any).id as string;
               init[soItemId] = remainingMap[soItemId] || 0;
             }
-            setDeliveryTypeSelection('Full');
+            setDeliveryTypeSelection(hasPreviousDeliveries ? 'Partial' : 'Full');
             setPrefillAllRemaining(false);
             usedAutoPrefill = true;
           } else {
@@ -748,7 +751,9 @@ export default function DeliveryNote() {
       setIsCreating(false);
       return;
     }
-    const isFull = totals.deliver === totals.ordered && totals.ordered > 0;
+    const computedIsFull = totals.deliver === totals.ordered && totals.ordered > 0;
+    // Once any partial delivery exists for this SO, force new deliveries to be Partial
+    const isFull = hasPreviousDeliveriesForSelectedSO ? false : computedIsFull;
     const deliveryType = isFull ? "Full" : "Partial";
     const headerPayload = {
       salesOrderId: selectedSalesOrderId,
@@ -1660,22 +1665,25 @@ export default function DeliveryNote() {
             {selectedSalesOrderId && (
               <div className="mt-2">
                 <h4 className="font-semibold mb-2">Select Items and Quantities</h4>
-              {/* Delivery Type helper */}
+              {/* Delivery Type helper */
+              }
               <div className="grid grid-cols-12 gap-3 items-end mb-3">
                 <div className="col-span-4">
                   <Label className="text-xs">Delivery Type</Label>
                   <Select value={deliveryTypeSelection} onValueChange={(v: any) => {
-                    const val = (v === 'Full' ? 'Full' : 'Partial') as 'Full' | 'Partial';
-                    setDeliveryTypeSelection(val);
-                    if (val === 'Full') {
+                    const requested = (v === 'Full' ? 'Full' : 'Partial') as 'Full' | 'Partial';
+                    if (requested === 'Full' && hasPreviousDeliveriesForSelectedSO) {
+                      // Ignore selecting Full when a partial delivery already exists
+                      return;
+                    }
+                    setDeliveryTypeSelection(requested);
+                    if (requested === 'Full') {
                       // Prefill all deliver quantities to ordered quantities
                       const next: Record<string, number> = {};
                       for (const it of soItemsForCreate as any[]) {
                         next[it.id] = Number(it.quantity) || 0;
                       }
                       setDeliverQtyBySoItem(next);
-                    } else {
-                      // Keep current entries; do not overwrite
                     }
                   }}>
                     <SelectTrigger>
@@ -1683,9 +1691,12 @@ export default function DeliveryNote() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Partial">Partial</SelectItem>
-                      <SelectItem value="Full">Full</SelectItem>
+                      <SelectItem value="Full" disabled={hasPreviousDeliveriesForSelectedSO}>Full</SelectItem>
                     </SelectContent>
                   </Select>
+                  {hasPreviousDeliveriesForSelectedSO && (
+                    <div className="mt-1 text-xs text-orange-600">Full delivery is disabled because a partial delivery already exists.</div>
+                  )}
                 </div>
               </div>
                 {soItemsLoading ? (

@@ -833,7 +833,7 @@ export default function IssueReturnPage() {
           form.reset();
         }
       }}>
-        <DialogContent className="w-full max-w-[95vw] max-h-[80vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50 border-slate-200/60 shadow-2xl">
+        <DialogContent className="w-[95vw] max-w-5xl max-h-[80vh] overflow-y-auto bg-gradient-to-br from-white to-slate-50 border-slate-200/60 shadow-2xl">
           <DialogHeader className="pb-6 border-b border-slate-200/60">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl">

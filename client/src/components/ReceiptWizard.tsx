@@ -277,8 +277,8 @@ export default function ReceiptWizard({ open, onOpenChange, supplierLpos = [] }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dialog-responsive flex flex-col">
-        <DialogHeader>
+      <DialogContent className="dialog-responsive flex flex-col h-[90vh] max-h-[90vh] w-[95vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
             Create Material Receipt
@@ -289,7 +289,7 @@ export default function ReceiptWizard({ open, onOpenChange, supplierLpos = [] }:
         </DialogHeader>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-between mb-6 overflow-x-auto">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0 overflow-x-auto">
           <div className="flex items-center min-w-0 flex-1">
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center min-w-0">
@@ -314,10 +314,10 @@ export default function ReceiptWizard({ open, onOpenChange, supplierLpos = [] }:
           </div>
         </div>
 
-        <Progress value={(currentStep / steps.length) * 100} className="mb-6" />
+        <Progress value={(currentStep / steps.length) * 100} className="mb-4 flex-shrink-0" />
 
         {/* Step Content */}
-        <div className="py-2 flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 pr-2">
           {/* Step 1: Receipt Information */}
           {currentStep === 1 && (
             <Card className="h-full">

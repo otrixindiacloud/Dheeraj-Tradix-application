@@ -677,6 +677,11 @@ export class ModularStorage extends BaseStorage {
     return this.inventoryStorage.deleteInventoryItem(id);
   }
 
+  async forceDeleteInventoryItem(id: string) {
+    // Delegate to InventoryStorage implementation
+    return (this.inventoryStorage as any).forceDeleteInventoryItem(id);
+  }
+
   async getGoodsReceiptHeaders(filters?: any) {
     return this.goodsReceiptStorage.getGoodsReceiptHeaders?.(filters) ?? [];
   }

@@ -9,7 +9,6 @@ import {
   Building2,
   User,
   Receipt,
-  Printer,
   Download,
   Edit,
   Loader2,
@@ -162,6 +161,24 @@ const toDecimalString = (value?: number | string | null) => {
   return Number.isFinite(value) ? value.toString() : "0";
 };
 
+// Calculate line totals based on quantity, unit cost, discounts and VAT
+function computeItemTotals(item: Partial<MaterialReceiptItem>) {
+  const quantity = toNumber(item.quantity);
+  const unitCost = toNumber(item.unitCost);
+  const discountPercent = toNumber(item.discountPercent);
+  const explicitDiscountAmount = toNumber(item.discountAmount);
+  const vatPercent = toNumber(item.vatPercent);
+
+  const gross = quantity * unitCost;
+  const percentDiscountAmount = gross * (discountPercent / 100);
+  const discountAmount = explicitDiscountAmount > 0 ? explicitDiscountAmount : percentDiscountAmount;
+  const netTotal = Math.max(gross - discountAmount, 0);
+  const vatAmount = netTotal * (vatPercent / 100);
+  const totalPrice = netTotal + vatAmount;
+
+  return { netTotal, vatAmount, totalPrice };
+}
+
 const toDateInputValue = (value?: string | null) => {
   if (!value) return "";
   const date = new Date(value);
@@ -273,6 +290,41 @@ export default function MaterialReceiptDetail() {
     control: itemsForm.control,
     name: "items",
   });
+
+  // Auto-calculate item totals when relevant fields change
+  useEffect(() => {
+    const subscription = itemsForm.watch((_, info) => {
+      const name = info?.name || "";
+      if (!name.startsWith("items.")) return;
+      const match = name.match(/^items\.(\d+)\./);
+      const index = match ? parseInt(match[1], 10) : -1;
+      if (index < 0) return;
+
+      const item = itemsForm.getValues(`items.${index}` as const) as any;
+      if (!item) return;
+
+      const { netTotal, vatAmount, totalPrice } = computeItemTotals(item);
+
+      // Only update if values actually changed to avoid unnecessary renders
+      const currentNet = toNumber(item.netTotal);
+      const currentVat = toNumber(item.vatAmount);
+      const currentTotal = toNumber(item.totalPrice);
+
+      const round3 = (n: number) => parseFloat(n.toFixed(3));
+
+      if (Math.abs(currentNet - netTotal) > 0.0005) {
+        itemsForm.setValue(`items.${index}.netTotal` as const, round3(netTotal), { shouldDirty: true, shouldValidate: false });
+      }
+      if (Math.abs(currentVat - vatAmount) > 0.0005) {
+        itemsForm.setValue(`items.${index}.vatAmount` as const, round3(vatAmount), { shouldDirty: true, shouldValidate: false });
+      }
+      if (Math.abs(currentTotal - totalPrice) > 0.0005) {
+        itemsForm.setValue(`items.${index}.totalPrice` as const, round3(totalPrice), { shouldDirty: true, shouldValidate: false });
+      }
+    });
+
+    return () => subscription?.unsubscribe?.();
+  }, [itemsForm]);
 
   // Fetch customers list for the "Received By" dropdown
   const { data: customersData = { customers: [] } } = useQuery({
@@ -394,10 +446,6 @@ export default function MaterialReceiptDetail() {
     const discount = item.discountAmount ? parseFloat(item.discountAmount) : 0;
     return sum + (isNaN(discount) ? 0 : discount);
   }, 0);
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   const handleOpenHeaderDialog = () => {
     headerForm.reset(getHeaderFormValues(receipt));
@@ -1064,15 +1112,6 @@ export default function MaterialReceiptDetail() {
             >
               <Edit className="h-4 w-4" />
               Edit
-            </Button>
-            <Button
-              onClick={handlePrint}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Print
             </Button>
             <Button
               variant="outline"
