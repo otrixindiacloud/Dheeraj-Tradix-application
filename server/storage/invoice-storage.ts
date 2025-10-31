@@ -696,6 +696,9 @@ export class InvoiceStorage extends BaseStorage {
       }
     }
 
+    // Determine whether we are generating a full invoice (no specific items selected)
+    const isFullInvoice = !selectedDeliveryItemIds || selectedDeliveryItemIds.length === 0;
+
     // Compute a gross basis for proration when quotation has header discountAmount
     let precomputedGrossBasis = 0;
     if (items && items.length) {
@@ -703,7 +706,9 @@ export class InvoiceStorage extends BaseStorage {
         // Use pre-loaded sales order item data
         const soItem = di.salesOrderItemId ? salesOrderItemsMap.get(di.salesOrderItemId) : null;
         const soItemUnitPrice = soItem ? num(soItem.unitPrice) : 0;
-        const qty = num((di as any).deliveredQuantity || (di as any).pickedQuantity || (di as any).orderedQuantity || 0);
+        const qty = isFullInvoice
+          ? num((soItem as any)?.quantity || (di as any).orderedQuantity || (di as any).pickedQuantity || (di as any).deliveredQuantity || 0)
+          : num((di as any).deliveredQuantity || (di as any).pickedQuantity || (di as any).orderedQuantity || 0);
         const unit = soItemUnitPrice || num((di as any).unitPrice);
         precomputedGrossBasis += qty * unit;
       }
@@ -752,7 +757,10 @@ export class InvoiceStorage extends BaseStorage {
         vatPercentage: (soItem as any)?.vatPercentage
       } : 'None');
       
-      const qty = num(di.deliveredQuantity || di.pickedQuantity || di.orderedQuantity || soItem?.quantity || 0);
+      // For full invoices we should use the total ordered quantity from the sales order
+      const qty = isFullInvoice
+        ? num(soItem?.quantity || di.orderedQuantity || di.pickedQuantity || di.deliveredQuantity || 0)
+        : num(di.deliveredQuantity || di.pickedQuantity || di.orderedQuantity || soItem?.quantity || 0);
       const unitPrice = num(soItem?.unitPrice || di.unitPrice || 0);
       const lineGross = qty * unitPrice;
       

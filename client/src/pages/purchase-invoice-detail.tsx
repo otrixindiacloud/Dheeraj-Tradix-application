@@ -798,30 +798,7 @@ export default function PurchaseInvoiceDetail() {
                         );
                         })}
                       </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 border-gray-300 bg-gray-50">
-                          <td colSpan={3} className="py-4 px-4 font-semibold text-gray-900">
-                            Total
-                          </td>
-                          <td className="py-4 px-3 text-right font-semibold">
-                            {(invoiceData.items && invoiceData.items.length > 0 ? invoiceData.items : fallbackItems).reduce((sum, it) => sum + (it.quantity || 0), 0).toLocaleString()}
-                          </td>
-                          <td className="py-4 px-3"></td>
-                          <td className="py-4 px-3"></td>
-                          <td className="py-4 px-3 text-right font-semibold text-red-600">
-                            {invoiceData.currency} {financials.discountAmount.toFixed(2)}
-                          </td>
-                          <td className="py-4 px-3"></td>
-                          <td className="py-4 px-3 text-right font-semibold">
-                            {invoiceData.currency} {financials.taxAmount.toFixed(2)}
-                          </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className="text-lg font-bold">
-                              {invoiceData.currency} {financials.totalAmount.toFixed(2)}
-                            </span>
-                          </td>
-                        </tr>
-                      </tfoot>
+                      
                     </table>
                   </div>
                 )}
@@ -859,14 +836,18 @@ export default function PurchaseInvoiceDetail() {
                   <span className="text-sm text-gray-600">Subtotal</span>
                   <span className="text-sm font-medium">{invoiceData.currency} {financials.subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Tax (VAT)</span>
-                  <span className="text-sm font-medium">{invoiceData.currency} {financials.taxAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Discount</span>
-                  <span className="text-sm font-medium text-red-600">-{invoiceData.currency} {financials.discountAmount.toFixed(2)}</span>
-                </div>
+                {financials.taxAmount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Tax (VAT)</span>
+                    <span className="text-sm font-medium">{invoiceData.currency} {financials.taxAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                {financials.discountAmount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Discount</span>
+                    <span className="text-sm font-medium text-red-600">- {invoiceData.currency} {financials.discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <Separator />
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold">Total</span>

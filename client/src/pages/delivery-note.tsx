@@ -260,6 +260,7 @@ export default function DeliveryNote() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const userId = useUserId();
+  const [isCreating, setIsCreating] = useState(false);
   // Sales order items to support partial delivery during creation
   const [soItemsForCreate, setSoItemsForCreate] = useState<SalesOrderItem[]>([]);
   const [soItemsLoading, setSoItemsLoading] = useState(false);
@@ -708,12 +709,14 @@ export default function DeliveryNote() {
   };
 
   const handleCreateDeliveryNote = async () => {
+    setIsCreating(true);
     if (!selectedSalesOrderId) {
       toast({
         title: "Error",
         description: "Please select a sales order",
         variant: "destructive"
       });
+      setIsCreating(false);
       return;
     }
 
@@ -725,6 +728,7 @@ export default function DeliveryNote() {
         description: "Selected sales order is invalid or missing order number",
         variant: "destructive"
       });
+      setIsCreating(false);
       return;
     }
 
@@ -741,6 +745,7 @@ export default function DeliveryNote() {
     );
     if (totals.deliver <= 0) {
       toast({ title: "Error", description: "Please enter quantities > 0 for at least one item.", variant: "destructive" });
+      setIsCreating(false);
       return;
     }
     const isFull = totals.deliver === totals.ordered && totals.ordered > 0;
@@ -816,6 +821,7 @@ export default function DeliveryNote() {
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "Failed to create delivery note", variant: "destructive" });
     }
+    setIsCreating(false);
   };
 
   const handleStartPicking = () => {
@@ -1784,9 +1790,9 @@ export default function DeliveryNote() {
             </Button>
             <Button 
               onClick={handleCreateDeliveryNote}
-              disabled={createDeliveryNoteMutation.isPending}
+              disabled={isCreating}
             >
-              {createDeliveryNoteMutation.isPending && <LoadingSpinner className="mr-2" />}
+              {isCreating && <LoadingSpinner className="mr-2" />}
               Create Delivery Note
             </Button>
           </DialogFooter>

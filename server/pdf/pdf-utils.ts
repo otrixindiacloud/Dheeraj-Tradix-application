@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Invoice, InvoiceItem, Item, Customer, Quotation, QuotationItem } from '../../shared/schema';
+import { getCompanyInfoForDocument } from '../config/company-info';
 
 // Core reusable interfaces
 export interface PdfGenerateResult {
@@ -1303,6 +1304,7 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
   const leftColX = 15;
   const rightColX = pageWidth - 15;
   const leftColMaxWidth = (pageWidth / 2) - 25; // ensure left block doesn't collide with right block
+  const company = getCompanyInfoForDocument('delivery');
   
   // Company Header - Left Side (Golden Tag)
   doc.setFontSize(22).setFont('helvetica', 'bold');
@@ -1313,9 +1315,8 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
   doc.setFontSize(9).setFont('helvetica', 'normal');
   doc.setTextColor(60, 60, 60);
   doc.text('Trading & Supply Company', leftColX, 27);
-  doc.text('Kingdom of Bahrain', leftColX, 32);
-  doc.text('Mobile: +973 XXXX XXXX', leftColX, 37);
-  doc.text('Email: info@goldentag.com', leftColX, 42);
+  doc.text(company.address.country || 'Kingdom of Bahrain', leftColX, 32);
+  doc.text(`Email: ${company.contact.email}`, leftColX, 37);
   
   // Document Type and Date - Right Side
   doc.setFontSize(18).setFont('helvetica', 'bold');
@@ -1366,7 +1367,6 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
   // Customer Information - Left Side (no box)
   const custName = (customer as any).customerName || customer.name || 'N/A';
   const custAddress = customer.address || 'N/A';
-  const custPhone = (customer as any).phone || customer.phone || 'N/A';
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -1383,9 +1383,6 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
   const addressY = nameY + nameDims.h + 2;
   doc.text(addressLines, leftColX, addressY);
   const addressDims = doc.getTextDimensions(addressLines);
-  const phoneLines = doc.splitTextToSize(`Phone: ${custPhone}`, leftColMaxWidth);
-  const phoneY = addressY + addressDims.h + 2;
-  doc.text(phoneLines, leftColX, phoneY);
   
   // Delivery Information - Right Side (no box)
   doc.setFont('helvetica', 'bold');
@@ -1398,35 +1395,12 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
     doc.text(`Tracking: ${deliveryNote.trackingNumber}`, rightColX, afterMeta + 23, { align: 'right' });
   }
 
-  const leftBlockBottom = phoneY + doc.getTextDimensions(phoneLines).h;
+  const leftBlockBottom = addressY + addressDims.h;
   const rightBlockBottom = afterMeta + (hasTracking ? 23 : 17);
   const afterAddress = Math.max(leftBlockBottom, rightBlockBottom) + 6;
   
-  // Sales Order totals banner (aggregated across all deliveries)
-  if ((ctx as any).soTotals) {
-    const so = (ctx as any).soTotals as { totalOrdered: number; totalDelivered: number; totalRemaining: number };
-    const soRef = salesOrder?.orderNumber ? ` (${salesOrder.orderNumber})` : '';
-    autoTable(doc, {
-      startY: afterAddress - 10,
-      head: [[ `SO Totals${soRef}`, 'Ordered', 'Delivered', 'Remaining' ]],
-      body: [[ '', 
-        so.totalOrdered.toFixed(2), 
-        so.totalDelivered.toFixed(2), 
-        so.totalRemaining.toFixed(2) 
-      ]],
-      styles: { fontSize: 7, cellPadding: 2 },
-      headStyles: { fillColor: [255,255,255], textColor:0, fontStyle:'bold' },
-      columnStyles: { 0: { cellWidth: 70 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
-      margin: { left: 15, right: 15 }
-    });
-  }
- 
-  // Determine safe start position for items table to avoid overlap with SO totals banner
+  // Determine start position for items table
   let itemsStartY = afterAddress;
-  if ((ctx as any).soTotals && (doc as any).lastAutoTable && typeof (doc as any).lastAutoTable.finalY === 'number') {
-    // Ensure the items table starts after the SO totals table if it extends below afterAddress
-    itemsStartY = Math.max(afterAddress, (doc as any).lastAutoTable.finalY + 4);
-  }
 
   // Enhanced Items table with comprehensive columns matching quotation format
   const currency = (deliveryNote as any).currency || (salesOrder as any)?.currency || 'BHD';
@@ -1587,7 +1561,8 @@ export function buildEnhancedDeliveryNotePdf(ctx: DeliveryNotePdfContext): Buffe
   doc.text('Thank you for your business!', pageWidth / 2, currentPageHeight - 20, { align: 'center' });
   doc.text('Golden Tag - Your Trusted Trading Partner', pageWidth / 2, currentPageHeight - 15, { align: 'center' });
   doc.setFontSize(6);
-  doc.text('Kingdom of Bahrain | Mobile: +973 XXXX XXXX | Email: info@goldentag.com', pageWidth / 2, currentPageHeight - 10, { align: 'center' });
+  const footerLine = `${company.address.country} | Email: ${company.contact.email}`;
+  doc.text(footerLine, pageWidth / 2, currentPageHeight - 10, { align: 'center' });
 
   return Buffer.from(doc.output('arraybuffer'));
 }
